@@ -1,0 +1,202 @@
+﻿using System;
+using System.Collections.Generic;
+
+namespace grasslang
+{
+    /*
+     * 语法规定：
+     * 1.表达式必须有返回值
+     * 2.大语句解析结束后，必须将pos移到分号
+     */
+    public class Parser
+    {
+        public enum Priority
+        {
+            Lowest = 0,
+            Assign = 1, // =
+            Equals = 2 , // ==, !=
+            LessGreater = 3, // < ,>
+            Sum = 4, //+,-
+            Product = 5,//*,/
+            Prefix = 6, // !,-,+
+            Call = 7, // func() 
+            Index = 8, // array[0], map[0]
+        }
+        public static Dictionary<Token.TokenType, Priority> PriorityMap = new Dictionary<Token.TokenType, Priority>
+        {
+            {Token.TokenType.PLUS, Priority.Sum},
+            {Token.TokenType.MINUS, Priority.Sum},
+            {Token.TokenType.ASTERISK, Priority.Product},
+            {Token.TokenType.SLASH, Priority.Product},
+
+            {Token.TokenType.LPAREN, Priority.Call}
+        };
+
+        public static Priority QueryPriority(Token.TokenType type)
+        {
+            if (PriorityMap.ContainsKey(type))
+            {
+                return PriorityMap[type];
+            }
+            return Priority.Lowest;
+        }
+        private LexerInterface lexer = null;
+
+        private Token current
+        {
+            get
+            {
+                return lexer.CurrentToken();
+            }
+        }
+        public Parser(LexerInterface _lexer)
+        {
+            lexer = _lexer;
+        }
+
+        private Node GetNextNode()
+        {
+            return ParseStatement();
+        }
+        public Ast BuildAst()
+        {
+            Ast result = new Ast();
+            while (lexer.PeekToken().Type != Token.TokenType.EOF)
+            {
+                lexer.GetNextToken();
+                result.Root.Add(GetNextNode());
+                lexer.GetNextToken();
+            }
+            return result;
+        }
+
+
+
+        private Statement ParseStatement()
+        {
+            switch (current.Type)
+            {
+                case Token.TokenType.LET:
+                {
+                    break;
+                }
+                case Token.TokenType.RETURN:
+                {
+                    break;
+                }
+            }
+            return ParseExpressionStatement();
+        }
+
+        private ExpressionStatement ParseExpressionStatement()
+        {
+            return new ExpressionStatement(ParseExpression(Priority.Lowest));
+        }
+        
+        private Expression ParseExpression(Priority priority)
+        {
+            Expression leftExpression = ParsePrefixExpression();
+            if (leftExpression == null)
+            {
+                // handle error
+            }
+
+            Token peek = lexer.PeekToken();
+            while (peek.Type != Token.TokenType.SEMICOLON 
+                   && peek.Type != Token.TokenType.EOF
+                   && peek.Type != Token.TokenType.RPAREN
+                   && priority <= QueryPriority(peek.Type))
+            {
+                // handle infix
+                lexer.GetNextToken();
+                leftExpression = ParseInfixExpression(leftExpression);
+                
+                peek = lexer.PeekToken();
+            }
+
+            
+            return leftExpression;
+        }
+        private Expression ParseInfixExpression(Expression leftExpression)
+        {
+            switch (current.Type)
+            {
+                case Token.TokenType.PLUS:
+                {
+                    // Parse Plus
+                    InfixExpression expression = new InfixExpression();
+                    expression.LeftExpression = leftExpression;
+                    expression.Operator = current;
+                    lexer.GetNextToken();
+                    expression.RightExpression = ParseExpression(QueryPriority(expression.Operator.Type));
+                    return expression;
+                }
+                case Token.TokenType.LPAREN:
+                {
+                    // Parse Call
+                    CallExpression callExpression = new CallExpression();
+                    if (leftExpression.GetType() == typeof(IdentifierExpression))
+                    {
+                        callExpression.FunctionName = (IdentifierExpression)leftExpression;
+                    }
+                    else
+                    {
+                        //handle error
+                        break;
+                    }
+                    callExpression.ArgsList = ParseCallArgs(); // now is expression start.
+                    lexer.GetNextToken(); // eat ')'
+                    return callExpression;
+                }
+            }
+
+            return null;
+        }
+
+        private Expression[] ParseCallArgs()
+        {
+            Token peek;
+            List<Expression> expressions = new List<Expression>();
+            peek = lexer.PeekToken(); // now is '(' . if the code is "xxx()", then peek is ')' 
+            while (peek.Type != Token.TokenType.RPAREN)
+            {
+                lexer.GetNextToken();
+                expressions.Add(ParseExpression(QueryPriority(peek.Type)));
+                peek = lexer.PeekToken();
+            }
+            return expressions.ToArray();
+        }
+        private Expression ParsePrefixDefault()
+        {
+            PrefixExpression prefixExpression = new PrefixExpression();
+            prefixExpression.Token = current;
+            lexer.GetNextToken();
+            prefixExpression.Expression = ParseExpression(Priority.Prefix);
+            return prefixExpression;
+        }
+        private Expression ParsePrefixExpression()
+        {
+            switch (current.Type)
+            {
+                case Token.TokenType.IDENTIFER:
+                {
+                    return new IdentifierExpression(current, current.Literal);
+                }
+                case Token.TokenType.PLUS:
+                {
+                    return ParsePrefixDefault();
+                }
+                case Token.TokenType.MINUS:
+                {
+                    return ParsePrefixDefault();
+                }
+                case Token.TokenType.STRING:
+                {
+                    return new StringExpression(current, current.Literal);
+                }
+            }
+
+            return null;
+        }
+    }
+}
