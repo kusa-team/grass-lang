@@ -113,4 +113,33 @@ namespace grasslang
             
         }
     }
+
+    public class LetStatement : Statement
+    {
+        public IdentifierExpression VarName;
+        public Expression Value = null;
+
+        public LetStatement()
+        {
+            
+        }
+        public LetStatement(IdentifierExpression varName)
+        {
+            this.VarName = varName;
+        }
+    }
+    
+    public class ReturnStatement : Statement
+    {
+        public Expression Value = null;
+
+        public ReturnStatement()
+        {
+            
+        }
+        public ReturnStatement(Expression value)
+        {
+            this.Value = value;
+        }
+    }
 }
