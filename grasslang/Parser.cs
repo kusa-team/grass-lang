@@ -21,6 +21,7 @@ namespace grasslang
             Prefix = 6, // !,-,+
             Call = 7, // func() 
             Index = 8, // array[0], map[0]
+            High = 9
         }
         public static Dictionary<Token.TokenType, Priority> PriorityMap = new Dictionary<Token.TokenType, Priority>
         {
@@ -78,11 +79,26 @@ namespace grasslang
             {
                 case Token.TokenType.LET:
                 {
-                    break;
+                    LetStatement letStatement = new LetStatement();
+                    lexer.GetNextToken(); // eat 'let'
+                    letStatement.VarName = new IdentifierExpression(current, current.Literal);
+                    if (lexer.PeekToken().Type == Token.TokenType.ASSIGN)
+                    {
+                        lexer.GetNextToken(); // eat varname
+                        lexer.GetNextToken(); // eat '='
+                        letStatement.Value = ParseExpression(Priority.Lowest);
+                    }
+                    return letStatement;
                 }
                 case Token.TokenType.RETURN:
                 {
-                    break;
+                    ReturnStatement returnStatement = new ReturnStatement();
+                    if (lexer.PeekToken().Type != Token.TokenType.SEMICOLON)
+                    {
+                        lexer.GetNextToken();
+                        returnStatement.Value = ParseExpression(Priority.Lowest);
+                    }
+                    return returnStatement;
                 }
             }
             return ParseExpressionStatement();

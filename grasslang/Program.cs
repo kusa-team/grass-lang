@@ -16,8 +16,8 @@ namespace grasslang
             Parser parser = new Parser(lexer);
             Ast ast = parser.BuildAst();
             sw2.Stop();
-            //Console.WriteLine("Lexer耗时：{0}ms，Parser耗时：{1}ms", sw1.ElapsedMilliseconds, sw2.ElapsedMilliseconds);
-            Stopwatch sw3 = Stopwatch.StartNew();
+            Console.WriteLine("Lexer耗时：{0}ms，Parser耗时：{1}ms", sw1.ElapsedMilliseconds, sw2.ElapsedMilliseconds);
+            /*Stopwatch sw3 = Stopwatch.StartNew();
             ast.Root.ForEach((node) =>
             {
                 Expression expression = ((ExpressionStatement) node).Expression;
@@ -31,7 +31,7 @@ namespace grasslang
                     }
                 }
             });
-            sw3.Stop();
+            sw3.Stop();*/
             //Console.WriteLine("临时代码执行器耗时：{0}ms", sw3.ElapsedMilliseconds);
         }
     }
