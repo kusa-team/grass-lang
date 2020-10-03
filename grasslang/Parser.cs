@@ -14,7 +14,7 @@ namespace grasslang
         {
             Lowest = 0,
             Assign = 1, // =
-            Equals = 2 , // ==, !=
+            Equals = 2, // ==, !=
             LessGreater = 3, // < ,>
             Sum = 4, //+,-
             Product = 5,//*,/
@@ -78,28 +78,42 @@ namespace grasslang
             switch (current.Type)
             {
                 case Token.TokenType.LET:
-                {
-                    LetStatement letStatement = new LetStatement();
-                    lexer.GetNextToken(); // eat 'let'
-                    letStatement.VarName = new IdentifierExpression(current, current.Literal);
-                    if (lexer.PeekToken().Type == Token.TokenType.ASSIGN)
                     {
-                        lexer.GetNextToken(); // eat varname
-                        lexer.GetNextToken(); // eat '='
-                        letStatement.Value = ParseExpression(Priority.Lowest);
+                        LetStatement letStatement = new LetStatement();
+                        lexer.GetNextToken(); // eat 'let'
+                        letStatement.VarName = new IdentifierExpression(current, current.Literal);
+                        if (lexer.PeekToken().Type == Token.TokenType.ASSIGN)
+                        {
+                            lexer.GetNextToken(); // eat varname
+                            lexer.GetNextToken(); // eat '='
+                            letStatement.Value = ParseExpression(Priority.Lowest);
+                        }
+                        return letStatement;
                     }
-                    return letStatement;
-                }
                 case Token.TokenType.RETURN:
-                {
-                    ReturnStatement returnStatement = new ReturnStatement();
-                    if (lexer.PeekToken().Type != Token.TokenType.SEMICOLON)
                     {
-                        lexer.GetNextToken();
-                        returnStatement.Value = ParseExpression(Priority.Lowest);
+                        ReturnStatement returnStatement = new ReturnStatement();
+                        if (lexer.PeekToken().Type != Token.TokenType.SEMICOLON)
+                        {
+                            lexer.GetNextToken();
+                            returnStatement.Value = ParseExpression(Priority.Lowest);
+                        }
+                        return returnStatement;
                     }
-                    return returnStatement;
-                }
+                case Token.TokenType.FUNCTION:
+                    {
+                        FunctionStatement functionStatement = new FunctionStatement();
+                        lexer.GetNextToken();
+                        if(ParseExpression(Priority.Lowest) is IdentifierExpression functionName)
+                        {
+                            functionStatement.FunctionName = functionName;
+                        } else
+                        {
+                            // error
+                        }
+
+                        return null;
+                    }
             }
             return ParseExpressionStatement();
         }
@@ -108,7 +122,7 @@ namespace grasslang
         {
             return new ExpressionStatement(ParseExpression(Priority.Lowest));
         }
-        
+
         private Expression ParseExpression(Priority priority, Token.TokenType stopTag = Token.TokenType.SEMICOLON)
         {
             Expression leftExpression = ParsePrefixExpression();
@@ -126,11 +140,11 @@ namespace grasslang
                 // handle infix
                 lexer.GetNextToken();
                 leftExpression = ParseInfixExpression(leftExpression);
-                
+
                 peek = lexer.PeekToken();
             }
 
-            
+
             return leftExpression;
         }
         private Expression ParseInfixExpression(Expression leftExpression)
@@ -138,32 +152,32 @@ namespace grasslang
             switch (current.Type)
             {
                 case Token.TokenType.PLUS:
-                {
-                    // Parse Plus
-                    InfixExpression expression = new InfixExpression();
-                    expression.LeftExpression = leftExpression;
-                    expression.Operator = current;
-                    lexer.GetNextToken();
-                    expression.RightExpression = ParseExpression(QueryPriority(expression.Operator.Type));
-                    return expression;
-                }
+                    {
+                        // Parse Plus
+                        InfixExpression expression = new InfixExpression();
+                        expression.LeftExpression = leftExpression;
+                        expression.Operator = current;
+                        lexer.GetNextToken();
+                        expression.RightExpression = ParseExpression(QueryPriority(expression.Operator.Type));
+                        return expression;
+                    }
                 case Token.TokenType.LPAREN:
-                {
-                    // Parse Call
-                    CallExpression callExpression = new CallExpression();
-                    if (leftExpression is IdentifierExpression identifierExpression)
                     {
-                        callExpression.FunctionName = identifierExpression;
+                        // Parse Call
+                        CallExpression callExpression = new CallExpression();
+                        if (leftExpression is IdentifierExpression identifierExpression)
+                        {
+                            callExpression.FunctionName = identifierExpression;
+                        }
+                        else
+                        {
+                            //handle error
+                            break;
+                        }
+                        callExpression.ArgsList = ParseCallArgs(); // now is expression start.
+                        lexer.GetNextToken(); // eat ')'
+                        return callExpression;
                     }
-                    else
-                    {
-                        //handle error
-                        break;
-                    }
-                    callExpression.ArgsList = ParseCallArgs(); // now is expression start.
-                    lexer.GetNextToken(); // eat ')'
-                    return callExpression;
-                }
             }
 
             return null;
@@ -179,7 +193,7 @@ namespace grasslang
                 lexer.GetNextToken();
                 expressions.Add(ParseExpression(Priority.Lowest, Token.TokenType.COMMA));
                 peek = lexer.PeekToken();
-                if(peek.Type == Token.TokenType.COMMA)
+                if (peek.Type == Token.TokenType.COMMA)
                 {
                     lexer.GetNextToken();
                 }
@@ -199,21 +213,21 @@ namespace grasslang
             switch (current.Type)
             {
                 case Token.TokenType.IDENTIFER:
-                {
-                    return new IdentifierExpression(current, current.Literal);
-                }
+                    {
+                        return new IdentifierExpression(current, current.Literal);
+                    }
                 case Token.TokenType.PLUS:
-                {
-                    return ParsePrefixDefault();
-                }
+                    {
+                        return ParsePrefixDefault();
+                    }
                 case Token.TokenType.MINUS:
-                {
-                    return ParsePrefixDefault();
-                }
+                    {
+                        return ParsePrefixDefault();
+                    }
                 case Token.TokenType.STRING:
-                {
-                    return new StringExpression(current, current.Literal);
-                }
+                    {
+                        return new StringExpression(current, current.Literal);
+                    }
             }
 
             return null;

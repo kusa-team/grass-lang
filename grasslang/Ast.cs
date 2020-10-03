@@ -18,10 +18,13 @@ namespace grasslang
     {
 
     }
-
-    public class BlockStatement : Statement
+    public class Block : Node
     {
-        
+        public List<Node> body = null;
+        public Block()
+        {
+
+        }
     }
     public class ExpressionStatement : Statement
     {
@@ -140,6 +143,16 @@ namespace grasslang
         public ReturnStatement(Expression value)
         {
             this.Value = value;
+        }
+    }
+    public class FunctionStatement : Statement
+    {
+        public IdentifierExpression FunctionName = null;
+        public List<Expression> ArgumentList;
+        public Block body = null;
+        public FunctionStatement()
+        {
+
         }
     }
 }
