@@ -17,22 +17,6 @@ namespace grasslang
             Ast ast = parser.BuildAst();
             sw2.Stop();
             Console.WriteLine("Lexer耗时：{0}ms，Parser耗时：{1}ms", sw1.ElapsedMilliseconds, sw2.ElapsedMilliseconds);
-            /*Stopwatch sw3 = Stopwatch.StartNew();
-            ast.Root.ForEach((node) =>
-            {
-                Expression expression = ((ExpressionStatement) node).Expression;
-                if (expression.GetType() == typeof(CallExpression))
-                {
-                    CallExpression callExpression = (CallExpression) expression;
-                    if (callExpression.FunctionName.Literal == "print")
-                    {
-                        Console.WriteLine(((StringExpression)callExpression.ArgsList[0])
-                            .Value);
-                    }
-                }
-            });
-            sw3.Stop();*/
-            //Console.WriteLine("临时代码执行器耗时：{0}ms", sw3.ElapsedMilliseconds);
         }
     }
 }

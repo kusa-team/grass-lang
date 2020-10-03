@@ -109,7 +109,7 @@ namespace grasslang
             return new ExpressionStatement(ParseExpression(Priority.Lowest));
         }
         
-        private Expression ParseExpression(Priority priority)
+        private Expression ParseExpression(Priority priority, Token.TokenType stopTag = Token.TokenType.SEMICOLON)
         {
             Expression leftExpression = ParsePrefixExpression();
             if (leftExpression == null)
@@ -118,7 +118,7 @@ namespace grasslang
             }
 
             Token peek = lexer.PeekToken();
-            while (peek.Type != Token.TokenType.SEMICOLON 
+            while (peek.Type != stopTag
                    && peek.Type != Token.TokenType.EOF
                    && peek.Type != Token.TokenType.RPAREN
                    && priority <= QueryPriority(peek.Type))
@@ -151,9 +151,9 @@ namespace grasslang
                 {
                     // Parse Call
                     CallExpression callExpression = new CallExpression();
-                    if (leftExpression.GetType() == typeof(IdentifierExpression))
+                    if (leftExpression is IdentifierExpression identifierExpression)
                     {
-                        callExpression.FunctionName = (IdentifierExpression)leftExpression;
+                        callExpression.FunctionName = identifierExpression;
                     }
                     else
                     {
@@ -173,12 +173,16 @@ namespace grasslang
         {
             Token peek;
             List<Expression> expressions = new List<Expression>();
-            peek = lexer.PeekToken(); // now is '(' . if the code is "xxx()", then peek is ')' 
+            peek = lexer.PeekToken(); // now is '('
             while (peek.Type != Token.TokenType.RPAREN)
             {
                 lexer.GetNextToken();
-                expressions.Add(ParseExpression(QueryPriority(peek.Type)));
+                expressions.Add(ParseExpression(Priority.Lowest, Token.TokenType.COMMA));
                 peek = lexer.PeekToken();
+                if(peek.Type == Token.TokenType.COMMA)
+                {
+                    lexer.GetNextToken();
+                }
             }
             return expressions.ToArray();
         }
