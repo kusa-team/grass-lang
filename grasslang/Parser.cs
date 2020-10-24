@@ -3,11 +3,6 @@ using System.Collections.Generic;
 
 namespace grasslang
 {
-    /*
-     * 语法规定：
-     * 1.表达式必须有返回值
-     * 2.大语句解析结束后，必须将pos移到分号
-     */
     public class Parser
     {
         public enum Priority
@@ -81,12 +76,9 @@ namespace grasslang
                     {
                         LetStatement letStatement = new LetStatement();
                         lexer.GetNextToken(); // eat 'let'
-                        letStatement.VarName = new IdentifierExpression(current, current.Literal);
-                        if (lexer.PeekToken().Type == Token.TokenType.ASSIGN)
+                        if (ParseExpression(Priority.Lowest) is DefinitionExpression definitionExpression)
                         {
-                            lexer.GetNextToken(); // eat varname
-                            lexer.GetNextToken(); // eat '='
-                            letStatement.Value = ParseExpression(Priority.Lowest);
+                            letStatement.Definition = definitionExpression;
                         }
                         return letStatement;
                     }
@@ -104,15 +96,47 @@ namespace grasslang
                     {
                         FunctionStatement functionStatement = new FunctionStatement();
                         lexer.GetNextToken();
-                        if(ParseExpression(Priority.Lowest) is IdentifierExpression functionName)
+                        // parse function name
+                        if (ParsePrefixExpression() is IdentifierExpression functionName)
                         {
                             functionStatement.FunctionName = functionName;
                         } else
                         {
-                            // error
+                            // handle error
                         }
-
-                        return null;
+                        // parse function arguments
+                        lexer.GetNextToken();
+                        while (lexer.PeekToken().Type == Token.TokenType.IDENTIFER)
+                        {
+                            lexer.GetNextToken();
+                            if (ParseExpression(Priority.Lowest, Token.TokenType.COMMA)
+                                is DefinitionExpression definition)
+                            {
+                                functionStatement.ArgumentList.Add(definition);
+                                lexer.GetNextToken();
+                            } else
+                            {
+                                // handle error
+                            }
+                        }
+                        // parse function body
+                        if(lexer.GetNextToken().Type != Token.TokenType.LBRACE)
+                        {
+                            // handle error
+                        }
+                        Block body = new Block();
+                        while(true)
+                        {
+                            lexer.GetNextToken();
+                            body.body.Add(GetNextNode());
+                            lexer.GetNextToken();
+                            if (lexer.PeekToken().Type == Token.TokenType.RBRACE)
+                            {
+                                break;
+                            }
+                        }
+                        functionStatement.body = body;
+                        return functionStatement;
                     }
             }
             return ParseExpressionStatement();
@@ -122,8 +146,14 @@ namespace grasslang
         {
             return new ExpressionStatement(ParseExpression(Priority.Lowest));
         }
-
         private Expression ParseExpression(Priority priority, Token.TokenType stopTag = Token.TokenType.SEMICOLON)
+        {
+            return ParseExpression(priority, (type) =>
+            {
+                return type != stopTag;
+            });
+        }
+        private Expression ParseExpression(Priority priority, Func<Token.TokenType, bool> stopFunc)
         {
             Expression leftExpression = ParsePrefixExpression();
             if (leftExpression == null)
@@ -132,7 +162,7 @@ namespace grasslang
             }
 
             Token peek = lexer.PeekToken();
-            while (peek.Type != stopTag
+            while (stopFunc(peek.Type)
                    && peek.Type != Token.TokenType.EOF
                    && peek.Type != Token.TokenType.RPAREN
                    && priority <= QueryPriority(peek.Type))
@@ -177,6 +207,81 @@ namespace grasslang
                         callExpression.ArgsList = ParseCallArgs(); // now is expression start.
                         lexer.GetNextToken(); // eat ')'
                         return callExpression;
+                    }
+                case Token.TokenType.DOT:
+                    {
+                        if (leftExpression is ChildrenExpression lastLayer)
+                        {
+                            lexer.GetNextToken();
+                            if(ParsePrefixExpression() is IdentifierExpression nextLayer)
+                            {
+                                lastLayer.Layers.Add(nextLayer);
+                                lastLayer.Literal += "." + nextLayer.Literal;
+                                return lastLayer;
+                            } else
+                            {
+                                // handle error
+                            }
+                        }
+                        ChildrenExpression childrenExpression = new ChildrenExpression();
+                        if (leftExpression is IdentifierExpression identifierExpression)
+                        {
+                            childrenExpression.Layers.Add(identifierExpression);
+                            lexer.GetNextToken();
+                            if (ParsePrefixExpression() is IdentifierExpression nextLayer)
+                            {
+                                childrenExpression.Layers.Add(nextLayer);
+                                childrenExpression.Literal = identifierExpression.Literal
+                                    +  "." + nextLayer.Literal;
+                            }
+                            else
+                            {
+                                // handle error
+                            }
+                        } else
+                        {
+                            // handle error
+                        }
+                        return childrenExpression;
+                    }
+                case Token.TokenType.COLON:
+                    {
+                        DefinitionExpression definition = new DefinitionExpression();
+                        if(leftExpression is IdentifierExpression Name)
+                        {
+                            definition.Name = Name;
+                        } else
+                        {
+                            // handle error
+                        }
+                        lexer.GetNextToken();
+                        // parse type
+                        if(ParseExpression(Priority.Lowest, (type) =>
+                        {
+                            return type == Token.TokenType.IDENTIFER || type == Token.TokenType.DOT;
+                        }) is ChildrenExpression childrenExpression)
+                        {
+                            definition.Type = childrenExpression;
+                        } else
+                        {
+                            // handle error
+                        }
+                        // parse value
+                        if(lexer.PeekToken().Type == Token.TokenType.ASSIGN)
+                        {
+                            lexer.GetNextToken();
+                            lexer.GetNextToken();
+                            Expression value = ParseExpression(Priority.Lowest);
+                            if(value == null)
+                            {
+                                // handle error
+                            } else
+                            {
+                                definition.Value = value;
+                            }
+                        }
+
+                        return definition;
                     }
             }
 

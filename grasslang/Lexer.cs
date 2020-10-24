@@ -27,7 +27,8 @@ namespace grasslang
             COMMA, // ,
             SEMICOLON, // ;
             DOT, // .
-            
+            COLON, // :
+
             LPAREN, // (
             RPAREN, // )
             LBRACE, // {
@@ -269,7 +270,7 @@ namespace grasslang
                 }
                 
                 
-                // , ; .
+                // , ; . :
                 case ',':
                 {
                     tok = Token.Create(Token.TokenType.COMMA, ch);
@@ -285,8 +286,12 @@ namespace grasslang
                     tok = Token.Create(Token.TokenType.DOT, ch);
                     break;
                 }
-                
-                
+                case ':':
+                {
+                    tok = Token.Create(Token.TokenType.COLON, ch);
+                    break;
+                }
+
                 // ( ) { }
                 case '(':
                 {

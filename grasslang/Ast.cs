@@ -20,7 +20,7 @@ namespace grasslang
     }
     public class Block : Node
     {
-        public List<Node> body = null;
+        public List<Node> body = new List<Node>();
         public Block()
         {
 
@@ -116,19 +116,41 @@ namespace grasslang
             
         }
     }
+    [DebuggerDisplay("ChildrenExpression = \"{Literal}\"")]
+    public class ChildrenExpression : Expression
+    {
+        public string Literal;
+        public List<IdentifierExpression> Layers = new List<IdentifierExpression>();
+    }
 
+    [DebuggerDisplay("DefinitionExpression = \"{Name.Literal} : {Type.Literal}\"")]
+    public class DefinitionExpression : Expression
+    {
+        public IdentifierExpression Name;
+        public Expression Value = null;
+        public ChildrenExpression Type;
+        public DefinitionExpression()
+        {
+
+        }
+        public DefinitionExpression(IdentifierExpression Name, ChildrenExpression Type, Expression Value = null)
+        {
+            this.Name = Name;
+            this.Type = Type;
+            this.Value = Value;
+        }
+    }
     public class LetStatement : Statement
     {
-        public IdentifierExpression VarName;
-        public Expression Value = null;
+        public DefinitionExpression Definition;
 
         public LetStatement()
         {
             
         }
-        public LetStatement(IdentifierExpression varName)
+        public LetStatement(DefinitionExpression Definition)
         {
-            this.VarName = varName;
+            this.Definition = Definition;
         }
     }
     
@@ -148,7 +170,7 @@ namespace grasslang
     public class FunctionStatement : Statement
     {
         public IdentifierExpression FunctionName = null;
-        public List<Expression> ArgumentList;
+        public List<Expression> ArgumentList = new List<Expression>();
         public Block body = null;
         public FunctionStatement()
         {
