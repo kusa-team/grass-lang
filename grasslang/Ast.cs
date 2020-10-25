@@ -74,6 +74,11 @@ namespace grasslang
             
         }
     }
+
+    public class LiteralExpression : Expression
+    {
+        public string Literal = "";
+    }
     [DebuggerDisplay("StringExpression = \"{Value}\"")]
     public class StringExpression : Expression
     {
@@ -86,11 +91,15 @@ namespace grasslang
             Value = value;
         }
     }
+    [DebuggerDisplay("ChildrenExpression = \"{Literal}\"")]
+    public class ChildrenExpression : LiteralExpression
+    {
+        public List<IdentifierExpression> Layers = new List<IdentifierExpression>();
+    }
     [DebuggerDisplay("IdentifierExpression = \"{Literal}\"")]
-    public class IdentifierExpression : Expression
+    public class IdentifierExpression : LiteralExpression
     {
         public Token Token = null;
-        public string Literal = null;
 
         public IdentifierExpression(Token token, string literal)
         {
@@ -102,10 +111,10 @@ namespace grasslang
     [DebuggerDisplay("CallExpression = \"{FunctionName.Literal}\"")]
     public class CallExpression : Expression
     {
-        public IdentifierExpression FunctionName;
+        public LiteralExpression FunctionName;
         public Expression[] ArgsList;
-
-        public CallExpression(IdentifierExpression functionName, Expression[] argsList)
+        
+        public CallExpression(LiteralExpression functionName, Expression[] argsList)
         {
             FunctionName = functionName;
             ArgsList = argsList;
@@ -116,24 +125,19 @@ namespace grasslang
             
         }
     }
-    [DebuggerDisplay("ChildrenExpression = \"{Literal}\"")]
-    public class ChildrenExpression : Expression
-    {
-        public string Literal;
-        public List<IdentifierExpression> Layers = new List<IdentifierExpression>();
-    }
+
 
     [DebuggerDisplay("DefinitionExpression = \"{Name.Literal} : {Type.Literal}\"")]
     public class DefinitionExpression : Expression
     {
         public IdentifierExpression Name;
         public Expression Value = null;
-        public ChildrenExpression Type;
+        public LiteralExpression Type;
         public DefinitionExpression()
         {
 
         }
-        public DefinitionExpression(IdentifierExpression Name, ChildrenExpression Type, Expression Value = null)
+        public DefinitionExpression(IdentifierExpression Name, LiteralExpression Type, Expression Value = null)
         {
             this.Name = Name;
             this.Type = Type;
@@ -172,6 +176,7 @@ namespace grasslang
         public IdentifierExpression FunctionName = null;
         public List<Expression> ArgumentList = new List<Expression>();
         public Block body = null;
+        public LiteralExpression ReturnType;
         public FunctionStatement()
         {
 

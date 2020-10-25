@@ -106,21 +106,46 @@ namespace grasslang
                         }
                         // parse function arguments
                         lexer.GetNextToken();
-                        while (lexer.PeekToken().Type == Token.TokenType.IDENTIFER)
+                        if (lexer.PeekToken().Type == Token.TokenType.IDENTIFER)
                         {
-                            lexer.GetNextToken();
-                            if (ParseExpression(Priority.Lowest, Token.TokenType.COMMA)
-                                is DefinitionExpression definition)
+                            while (lexer.PeekToken().Type == Token.TokenType.IDENTIFER)
                             {
-                                functionStatement.ArgumentList.Add(definition);
                                 lexer.GetNextToken();
-                            } else
+                                if (ParseExpression(Priority.Lowest, Token.TokenType.COMMA)
+                                    is DefinitionExpression definition)
+                                {
+                                    functionStatement.ArgumentList.Add(definition);
+                                    lexer.GetNextToken();
+                                }
+                                else
+                                {
+                                    // handle error
+                                }
+                            }
+                        } else
+                        {
+                            lexer.GetNextToken(); // skip ')'
+                        }
+                        lexer.GetNextToken();
+                        // parse function return type
+                        if (current.Type != Token.TokenType.COLON)
+                        {
+                            // default type is void
+                        } else
+                        {
+                            if(lexer.PeekToken().Type != Token.TokenType.IDENTIFER)
                             {
                                 // handle error
                             }
+                            lexer.GetNextToken();
+                            if(ParseExpression(Priority.Lowest, Token.TokenType.LBRACE) is LiteralExpression returnType)
+                            {
+                                functionStatement.ReturnType = returnType;
+                                lexer.GetNextToken();
+                            }
                         }
                         // parse function body
-                        if(lexer.GetNextToken().Type != Token.TokenType.LBRACE)
+                        if (current.Type != Token.TokenType.LBRACE)
                         {
                             // handle error
                         }
@@ -177,27 +202,42 @@ namespace grasslang
 
             return leftExpression;
         }
+        private Expression HandleInfixExpression(Expression leftExpression)
+        {
+            InfixExpression expression = new InfixExpression();
+            expression.LeftExpression = leftExpression;
+            expression.Operator = current;
+            lexer.GetNextToken();
+            expression.RightExpression = ParseExpression(QueryPriority(expression.Operator.Type));
+            return expression;
+        }
         private Expression ParseInfixExpression(Expression leftExpression)
         {
             switch (current.Type)
             {
                 case Token.TokenType.PLUS:
                     {
-                        // Parse Plus
-                        InfixExpression expression = new InfixExpression();
-                        expression.LeftExpression = leftExpression;
-                        expression.Operator = current;
-                        lexer.GetNextToken();
-                        expression.RightExpression = ParseExpression(QueryPriority(expression.Operator.Type));
-                        return expression;
+                        return HandleInfixExpression(leftExpression);
+                    }
+                case Token.TokenType.MINUS:
+                    {
+                        return HandleInfixExpression(leftExpression);
+                    }
+                case Token.TokenType.ASTERISK:
+                    {
+                        return HandleInfixExpression(leftExpression);
+                    }
+                case Token.TokenType.SLASH:
+                    {
+                        return HandleInfixExpression(leftExpression);
                     }
                 case Token.TokenType.LPAREN:
                     {
                         // Parse Call
                         CallExpression callExpression = new CallExpression();
-                        if (leftExpression is IdentifierExpression identifierExpression)
+                        if (leftExpression is LiteralExpression literalExpression)
                         {
-                            callExpression.FunctionName = identifierExpression;
+                            callExpression.FunctionName = literalExpression;
                         }
                         else
                         {
@@ -259,9 +299,9 @@ namespace grasslang
                         if(ParseExpression(Priority.Lowest, (type) =>
                         {
                             return type == Token.TokenType.IDENTIFER || type == Token.TokenType.DOT;
-                        }) is ChildrenExpression childrenExpression)
+                        }) is LiteralExpression literalExpression)
                         {
-                            definition.Type = childrenExpression;
+                            definition.Type = literalExpression;
                         } else
                         {
                             // handle error
