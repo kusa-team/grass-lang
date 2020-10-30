@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-
+using grasslang.CodeGens;
 namespace grasslang
 {
     class Program
@@ -18,9 +18,9 @@ namespace grasslang
             sw2.Stop();
 
             Stopwatch sw3 = Stopwatch.StartNew();
-            CGen cGen = new CGen(ast);
-            cGen.Build();
-            string code = cGen.code;
+            CodeGen codeGen = new GntGen(ast);
+            codeGen.Build();
+            string code = codeGen.GetCode();
             sw3.Stop();
 
             Console.WriteLine("// Lexer耗时：{0}ms，Parser耗时：{1}ms，CGen耗时：{2}ms", sw1.ElapsedMilliseconds, sw2.ElapsedMilliseconds, sw3.ElapsedMilliseconds);

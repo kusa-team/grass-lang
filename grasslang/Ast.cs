@@ -38,7 +38,13 @@ namespace grasslang
 
     public class Expression : Node
     {
-        
+        public static IdentifierExpression Void
+        {
+            get
+            {
+                return new IdentifierExpression(null, "void");
+            }
+        }
     }
     public class PrefixExpression : Expression
     {
@@ -132,7 +138,7 @@ namespace grasslang
     {
         public IdentifierExpression Name;
         public Expression Value = null;
-        public LiteralExpression Type;
+        public LiteralExpression ObjType;
         public DefinitionExpression()
         {
 
@@ -140,7 +146,7 @@ namespace grasslang
         public DefinitionExpression(IdentifierExpression Name, LiteralExpression Type, Expression Value = null)
         {
             this.Name = Name;
-            this.Type = Type;
+            this.ObjType = Type;
             this.Value = Value;
         }
     }
@@ -180,6 +186,18 @@ namespace grasslang
         public FunctionStatement()
         {
 
+        }
+    }
+
+    public class InternalCode : Expression
+    {
+        public Token Token = null;
+        public string Value = null;
+
+        public InternalCode(Token token, string value)
+        {
+            Token = token;
+            Value = value;
         }
     }
 }

@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace grasslang
+namespace grasslang.CodeGens
 {
-    public class CGen
+    public class CGen : CodeGen
     {
         private Ast ast;
         public string code = "";
         public CGen(Ast ast)
         {
             this.ast = ast;
+        }
+        public string GetCode()
+        {
+            return code;
         }
         private string BuildNode(Node node)
         {
@@ -20,14 +24,7 @@ namespace grasslang
             }
             else if (node is FunctionStatement functionStatement)
             {
-                if (functionStatement.ReturnType == null)
-                {
-                    result += "void ";
-                }
-                else
-                {
-                    result += BuildNode(functionStatement.ReturnType) + " ";
-                }
+                result += BuildNode(functionStatement.ReturnType) + " ";
                 result += "glFunc_" + BuildNode(functionStatement.FunctionName) + "(";
 
                 bool frist_argument = true;
@@ -52,7 +49,7 @@ namespace grasslang
             }
             else if (node is DefinitionExpression definitionExpression)
             {
-                result += BuildNode(definitionExpression.Type) + " ";
+                result += BuildNode(definitionExpression.ObjType) + " ";
                 result += BuildNode(definitionExpression.Name);
                 if (definitionExpression.Value != null)
                 {
@@ -65,7 +62,12 @@ namespace grasslang
             }
             else if (node is CallExpression callExpression)
             {
-                result += "glFunc_" + BuildNode(callExpression.FunctionName) + "(";
+                string prefix = "glFunc_";
+                if(callExpression.FunctionName is ChildrenExpression)
+                {
+                    prefix = "";
+                }
+                result += prefix + BuildNode(callExpression.FunctionName) + "(";
                 bool frist_argument = true;
                 new List<Expression>(callExpression.ArgsList).ForEach((argument) =>
                 {
@@ -92,6 +94,14 @@ namespace grasslang
             else if(node is StringExpression stringExpression)
             {
                 result += "string(" + "\"" + stringExpression.Value + "\")";
+            }
+            else if(node is InternalCode internalCode)
+            {
+                result += internalCode.Value + "\n";
+            }
+            else if(node is ChildrenExpression childrenExpression)
+            {
+                result += childrenExpression.Literal;
             }
 
             return result;

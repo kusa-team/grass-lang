@@ -130,7 +130,7 @@ namespace grasslang
                         // parse function return type
                         if (current.Type != Token.TokenType.COLON)
                         {
-                            // default type is void
+                            functionStatement.ReturnType = Expression.Void;
                         } else
                         {
                             if(lexer.PeekToken().Type != Token.TokenType.IDENTIFER)
@@ -150,15 +150,11 @@ namespace grasslang
                             // handle error
                         }
                         Block body = new Block();
-                        while(true)
+                        while(lexer.PeekToken().Type != Token.TokenType.RBRACE)
                         {
                             lexer.GetNextToken();
                             body.body.Add(GetNextNode());
                             lexer.GetNextToken();
-                            if (lexer.PeekToken().Type == Token.TokenType.RBRACE)
-                            {
-                                break;
-                            }
                         }
                         functionStatement.body = body;
                         return functionStatement;
@@ -301,7 +297,7 @@ namespace grasslang
                             return type == Token.TokenType.IDENTIFER || type == Token.TokenType.DOT;
                         }) is LiteralExpression literalExpression)
                         {
-                            definition.Type = literalExpression;
+                            definition.ObjType = literalExpression;
                         } else
                         {
                             // handle error
@@ -372,6 +368,10 @@ namespace grasslang
                 case Token.TokenType.STRING:
                     {
                         return new StringExpression(current, current.Literal);
+                    }
+                case Token.TokenType.INTERNAL:
+                    {
+                        return new InternalCode(current, current.Literal);
                     }
             }
 

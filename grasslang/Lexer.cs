@@ -45,7 +45,8 @@ namespace grasslang
             EOF,
             IDENTIFER,
             STRING,
-            NUMBER
+            NUMBER,
+            INTERNAL
         }
 
         public static Token Create(TokenType type, char ch)
@@ -207,147 +208,168 @@ namespace grasslang
             switch (ch)
             {
                 case '=':
-                {
-                    if (PeekChar() == '=') // is '=' or '=='
                     {
-                        tok = Token.CreateWithString(Token.TokenType.EQ, "==");
-                        NextChar(); // eat second '='
+                        if (PeekChar() == '=') // is '=' or '=='
+                        {
+                            tok = Token.CreateWithString(Token.TokenType.EQ, "==");
+                            NextChar(); // eat second '='
+                        }
+                        else
+                        {
+                            tok = Token.Create(Token.TokenType.ASSIGN, ch);
+                        }
+                        break;
                     }
-                    else
-                    {
-                        tok = Token.Create(Token.TokenType.ASSIGN, ch);
-                    }
-                    break;
-                }
                 case '!':
-                {
-                    if (PeekChar() == '=') // is '!' or '!='
                     {
-                        tok = Token.CreateWithString(Token.TokenType.NOT_EQ, "!=");
-                        NextChar(); // eat second '='
+                        if (PeekChar() == '=') // is '!' or '!='
+                        {
+                            tok = Token.CreateWithString(Token.TokenType.NOT_EQ, "!=");
+                            NextChar(); // eat second '='
+                        }
+                        else
+                        {
+                            tok = Token.Create(Token.TokenType.NOT, ch);
+                        }
+                        break;
                     }
-                    else
-                    {
-                        tok = Token.Create(Token.TokenType.NOT, ch);
-                    }
-                    break;
-                }
 
-                
+
                 // + - * /
                 case '+':
-                {
-                    tok = Token.Create(Token.TokenType.PLUS, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.PLUS, ch);
+                        break;
+                    }
                 case '-':
-                {
-                    tok = Token.Create(Token.TokenType.MINUS, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.MINUS, ch);
+                        break;
+                    }
                 case '*':
-                {
-                    tok = Token.Create(Token.TokenType.ASTERISK, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.ASTERISK, ch);
+                        break;
+                    }
                 case '/':
-                {
-                    tok = Token.Create(Token.TokenType.SLASH, ch);
-                    break;
-                }
-                
-                
+                    {
+                        if (PeekChar() == '/')
+                        {
+                            while(NextChar() != '\n') { }
+                            NextChar();
+                            tok = GetNextToken();
+                        }
+                        else
+                        {
+                            tok = Token.Create(Token.TokenType.SLASH, ch);
+                        }
+                        
+                        break;
+                    }
+
+
                 // < >
                 case '<':
-                {
-                    tok = Token.Create(Token.TokenType.LT, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.LT, ch);
+                        break;
+                    }
                 case '>':
-                {
-                    tok = Token.Create(Token.TokenType.GT, ch);
-                    break;
-                }
-                
-                
+                    {
+                        tok = Token.Create(Token.TokenType.GT, ch);
+                        break;
+                    }
+
+
                 // , ; . :
                 case ',':
-                {
-                    tok = Token.Create(Token.TokenType.COMMA, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.COMMA, ch);
+                        break;
+                    }
                 case ';':
-                {
-                    tok = Token.Create(Token.TokenType.SEMICOLON, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.SEMICOLON, ch);
+                        break;
+                    }
                 case '.':
-                {
-                    tok = Token.Create(Token.TokenType.DOT, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.DOT, ch);
+                        break;
+                    }
                 case ':':
-                {
-                    tok = Token.Create(Token.TokenType.COLON, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.COLON, ch);
+                        break;
+                    }
 
                 // ( ) { }
                 case '(':
-                {
-                    tok = Token.Create(Token.TokenType.LPAREN, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.LPAREN, ch);
+                        break;
+                    }
                 case ')':
-                {
-                    tok = Token.Create(Token.TokenType.RPAREN, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.RPAREN, ch);
+                        break;
+                    }
                 case '{':
-                {
-                    tok = Token.Create(Token.TokenType.LBRACE, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.LBRACE, ch);
+                        break;
+                    }
                 case '}':
-                {
-                    tok = Token.Create(Token.TokenType.RBRACE, ch);
-                    break;
-                }
+                    {
+                        tok = Token.Create(Token.TokenType.RBRACE, ch);
+                        break;
+                    }
 
                 // string
                 case '"':
-                {
-                    tok = Token.CreateWithString(Token.TokenType.STRING, ReadString());
-                    break;
-                }
+                    {
+                        tok = Token.CreateWithString(Token.TokenType.STRING, ReadString());
+                        break;
+                    }
                 case '\'':
-                {
-                    tok = Token.CreateWithString(Token.TokenType.STRING, ReadString());
-                    break;
-                }
-                
+                    {
+                        tok = Token.CreateWithString(Token.TokenType.STRING, ReadString());
+                        break;
+                    }
+                // internal code
+                case '@':
+                    {
+                        if (NextChar() == '`')
+                        {
+                            tok = Token.CreateWithString(Token.TokenType.INTERNAL, ReadString());
+                        } else
+                        {
+                            // handle error
+                        }
+                        break;
+                    }
                 // keywords or identifier
                 default:
-                {
-                    string buffer = "";
-                    char peek = ch;
-                    while (!IsStopFlag(peek))
                     {
-                        buffer += peek;
-                        peek = PeekChar();
-                        if (IsStopFlag(peek))
+                        string buffer = "";
+                        char peek = ch;
+                        while (!IsStopFlag(peek))
                         {
-                            break;
+                            buffer += peek;
+                            peek = PeekChar();
+                            if (IsStopFlag(peek))
+                            {
+                                break;
+                            }
+                            NextChar();
                         }
-                        NextChar();
-                    }
 
-                    if (!string.IsNullOrEmpty(buffer.Trim()))
-                    {
-                        tok = new Token(GetTokenType(buffer), buffer);
+                        if (!string.IsNullOrEmpty(buffer.Trim()))
+                        {
+                            tok = new Token(GetTokenType(buffer), buffer);
+                        }
+                        break;
                     }
-                    break;
-                }
             }
 
             NextChar();
