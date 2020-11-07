@@ -33,7 +33,10 @@ namespace grasslang
             RPAREN, // )
             LBRACE, // {
             RBRACE, // }
-            
+            LBRACK, // [
+            RBRACK, // ]
+
+
             FUNCTION,
             LET,
             TRUE,
@@ -46,7 +49,8 @@ namespace grasslang
             IDENTIFER,
             STRING,
             NUMBER,
-            INTERNAL
+            INTERNAL,
+
         }
 
         public static Token Create(TokenType type, char ch)
@@ -188,7 +192,7 @@ namespace grasslang
 
         public static bool IsStopFlag(char ch)
         {
-            return IsWhitespace(ch) || "=!+-*/<>,;{}().".IndexOf(ch) != -1 || ch == '\x00';
+            return IsWhitespace(ch) || "=!+-*/<>,;{}()[].".IndexOf(ch) != -1 || ch == '\x00';
         }
         private void SkipWhitespace()
         {
@@ -324,7 +328,16 @@ namespace grasslang
                         tok = Token.Create(Token.TokenType.RBRACE, ch);
                         break;
                     }
-
+                case '[':
+                    {
+                        tok = Token.Create(Token.TokenType.LBRACK, ch);
+                        break;
+                    }
+                case ']':
+                    {
+                        tok = Token.Create(Token.TokenType.RBRACK, ch);
+                        break;
+                    }
                 // string
                 case '"':
                     {

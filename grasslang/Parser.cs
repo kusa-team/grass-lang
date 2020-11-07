@@ -11,11 +11,13 @@ namespace grasslang
             Assign = 1, // =
             Equals = 2, // ==, !=
             LessGreater = 3, // < ,>
-            Sum = 4, //+,-
-            Product = 5,//*,/
-            Prefix = 6, // !,-,+
-            Call = 7, // func() 
-            Index = 8, // array[0], map[0]
+
+            Index = 4, // array[0], map[0]
+            Sum = 5, //+,-
+            Product = 6,//*,/
+            Prefix = 7, // !,-,+
+            Call = 8, // func() 
+            
             High = 9
         }
         public static Dictionary<Token.TokenType, Priority> PriorityMap = new Dictionary<Token.TokenType, Priority>
@@ -25,7 +27,8 @@ namespace grasslang
             {Token.TokenType.ASTERISK, Priority.Product},
             {Token.TokenType.SLASH, Priority.Product},
 
-            {Token.TokenType.LPAREN, Priority.Call}
+            {Token.TokenType.LPAREN, Priority.Call},
+            {Token.TokenType.LBRACK, Priority.Index}
         };
 
         public static Priority QueryPriority(Token.TokenType type)
@@ -103,6 +106,8 @@ namespace grasslang
                         } else
                         {
                             // handle error
+                            InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_NAME_INVALID);
+                            
                         }
                         // parse function arguments
                         lexer.GetNextToken();
@@ -120,6 +125,7 @@ namespace grasslang
                                 else
                                 {
                                     // handle error
+                                    InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_ARGUMENT_INVALID);
                                 }
                             }
                         } else
@@ -136,6 +142,7 @@ namespace grasslang
                             if(lexer.PeekToken().Type != Token.TokenType.IDENTIFER)
                             {
                                 // handle error
+                                InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_TYPE_INVALID);
                             }
                             lexer.GetNextToken();
                             if(ParseExpression(Priority.Lowest, Token.TokenType.LBRACE) is LiteralExpression returnType)
@@ -148,6 +155,7 @@ namespace grasslang
                         if (current.Type != Token.TokenType.LBRACE)
                         {
                             // handle error
+                            InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_BODY_INVALID);
                         }
                         Block body = new Block();
                         while(lexer.PeekToken().Type != Token.TokenType.RBRACE)
@@ -180,6 +188,7 @@ namespace grasslang
             if (leftExpression == null)
             {
                 // handle error
+                InfoHandler.PrintFormatedError(InfoHandler.ErrorType.EXPRESSION_INVALID);
             }
 
             Token peek = lexer.PeekToken();
@@ -237,6 +246,7 @@ namespace grasslang
                         }
                         else
                         {
+                            InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_NAME_INVALID);
                             //handle error
                             break;
                         }
@@ -319,6 +329,34 @@ namespace grasslang
 
                         return definition;
                     }
+                case Token.TokenType.ASSIGN:
+                    {
+                        AssignExpression assignExpression = new AssignExpression();
+                        if(leftExpression is LiteralExpression literalExpression)
+                        {
+                            assignExpression.Left = literalExpression;
+                        } else
+                        {
+                            // handle error
+                            throw new Exception();
+                        }
+                        lexer.GetNextToken();
+                        assignExpression.Right = ParseExpression(Priority.Assign);
+                        return assignExpression;
+                    }
+                case Token.TokenType.LBRACK:
+                    {
+                        SubscriptExpression subscriptExpression = new SubscriptExpression();
+                        subscriptExpression.Body = leftExpression;
+                        lexer.GetNextToken();
+                        subscriptExpression.Subscript = ParseExpression(Priority.Index, Token.TokenType.RBRACK);
+                        if(lexer.GetNextToken().Type != Token.TokenType.RBRACK)
+                        {
+                            // handle error
+                            throw new Exception();
+                        }
+                        return subscriptExpression;
+                    }
             }
 
             return null;
@@ -372,6 +410,14 @@ namespace grasslang
                 case Token.TokenType.INTERNAL:
                     {
                         return new InternalCode(current, current.Literal);
+                    }
+                case Token.TokenType.TRUE:
+                    {
+                        return new IdentifierExpression(current, current.Literal);
+                    }
+                case Token.TokenType.FALSE:
+                    {
+                        return new IdentifierExpression(current, current.Literal);
                     }
             }
 

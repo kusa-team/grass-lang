@@ -188,7 +188,16 @@ namespace grasslang
 
         }
     }
-
+    public class AssignExpression : Expression
+    {
+        public LiteralExpression Left;
+        public Expression Right;
+    }
+    public class SubscriptExpression : Expression
+    {
+        public Expression Body;
+        public Expression Subscript;
+    }
     public class InternalCode : Expression
     {
         public Token Token = null;
