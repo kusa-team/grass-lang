@@ -30,7 +30,10 @@ namespace grasslang
             {Token.TokenType.Identifier, Priority.Prefix },
             {Token.TokenType.LeftBrace, Priority.Lowest }
         };
-
+        public static Priority QueryPriority(Token token)
+        {
+            return QueryPriority(token.Type);
+        }
         public static Priority QueryPriority(Token.TokenType type)
         {
             if (PriorityMap.ContainsKey(type))
@@ -65,11 +68,12 @@ namespace grasslang
             NextToken();
             while (Lexer.PeekToken().Type != Token.TokenType.Eof)
             {
-                Statement statement = ParseStatement();
+                Statement statement = parseStatement();
                 if (statement != null)
                 {
                     result.Root.Add(statement);
                 }
+                NextToken();
             }
             return result;
         }
@@ -77,25 +81,20 @@ namespace grasslang
         private Dictionary<Token.TokenType, Func<Expression>> prefixParserMap = new Dictionary<Token.TokenType, Func<Expression>>();
         private Func<Expression> getPrefixParserFunction(Token.TokenType type)
         {
-            try
+            if (prefixParserMap.ContainsKey(type))
             {
                 return prefixParserMap[type];
-            } catch
-            {
-                return null;
             }
+            return null;
         }
         private Dictionary<Token.TokenType, Func<Expression, Expression>> infixParserMap = new Dictionary<Token.TokenType, Func<Expression, Expression>>();
         private Func<Expression, Expression> getInfixParserFunction(Token.TokenType type)
         {
-            try
+            if (infixParserMap.ContainsKey(type))
             {
                 return infixParserMap[type];
             }
-            catch
-            {
-                return null;
-            }
+            return null;
         }
         public void InitParser()
         {
@@ -106,26 +105,52 @@ namespace grasslang
             // infix
             infixParserMap[Token.TokenType.Colon] = parseDefinitionExpression;
             infixParserMap[Token.TokenType.Dot] = parsePathExpression;
+
+            infixParserMap[Token.TokenType.Plus] = parseInfixExpression;
+            infixParserMap[Token.TokenType.Minus] = parseInfixExpression;
+            infixParserMap[Token.TokenType.Asterisk] = parseInfixExpression;
+            infixParserMap[Token.TokenType.Slash] = parseInfixExpression;
+
         }
 
 
-        private Statement ParseStatement()
+        private Statement parseStatement()
         {
             switch (current.Type)
             {
                 case Token.TokenType.Let:
                     {
-                        return null;
+                        return parseLetStatement();
                     }
                 case Token.TokenType.Return:
                     {
-                        return null;
+                        return parseReturnStatement();
                     }
             }
-            return ParseExpressionStatement();
+            return parseExpressionStatement();
         }
+        private LetStatement parseLetStatement()
+        {
+            NextToken();
+            LetStatement let = new LetStatement();
 
+            if(ParseExpression(Priority.Lowest) is DefinitionExpression definition)
+            {
+                let.Definition = definition;
+            } else
+            {
+                return null;
+            }
 
+            return let;
+        }
+        private ReturnStatement parseReturnStatement()
+        {
+            NextToken();
+            ReturnStatement returnStmt = new ReturnStatement();
+            returnStmt.Value = ParseExpression(Priority.Lowest);
+            return returnStmt;
+        }
         private Expression parseFunctionLiteral()
         {
             FunctionLiteral function = new FunctionLiteral();
@@ -200,11 +225,26 @@ namespace grasslang
 
         private Statement parseBlockStatement()
         {
-            return null;
+            if(current.Type != Token.TokenType.LeftBrace)
+            {
+                return null;
+            }
+            BlockStatement block = new BlockStatement();
+            while(peek.Type != Token.TokenType.RightBrace)
+            {
+                NextToken();
+                block.Body.Add(parseStatement());
+                if(peek.Type != Token.TokenType.Semicolon)
+                {
+                    return null;
+                }
+                NextToken();
+            }
+            return block;
         }
 
 
-        private ExpressionStatement ParseExpressionStatement()
+        private ExpressionStatement parseExpressionStatement()
         {
             Expression expression = ParseExpression(Priority.Lowest);
             if (peek.Type != Token.TokenType.Semicolon)
@@ -237,15 +277,6 @@ namespace grasslang
 
             return left;
         }
-        private Expression HandleInfixExpression(Expression leftExpression)
-        {
-            InfixExpression expression = new InfixExpression();
-            expression.LeftExpression = leftExpression;
-            expression.Operator = current;
-            Lexer.GetNextToken();
-            expression.RightExpression = ParseExpression(QueryPriority(expression.Operator.Type));
-            return expression;
-        }
         private IdentifierExpression parseIdentifierExpression()
         {
             if(current.Type != Token.TokenType.Identifier)
@@ -269,7 +300,15 @@ namespace grasslang
             path.Path.Add(ParseExpression(Priority.Index));
             return path;
         }
-
+        private InfixExpression parseInfixExpression(Expression left)
+        {
+            InfixExpression infix = new InfixExpression();
+            infix.Left = left;
+            infix.Operator = current;
+            NextToken();
+            infix.Right = ParseExpression(QueryPriority(infix.Operator));
+            return infix;
+        }
         private DefinitionExpression parseDefinitionExpression(Expression left)
         {
             DefinitionExpression definition = new DefinitionExpression();

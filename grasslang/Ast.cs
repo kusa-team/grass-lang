@@ -21,10 +21,6 @@ namespace grasslang
     public class BlockStatement : Statement
     {
         public List<Node> Body = new List<Node>();
-        public BlockStatement()
-        {
-
-        }
     }
     public class ExpressionStatement : Statement
     {
@@ -73,13 +69,13 @@ namespace grasslang
     public class InfixExpression : Expression
     {
         public Token Operator = null;
-        public Expression LeftExpression = null;
-        public Expression RightExpression = null;
+        public Expression Left = null;
+        public Expression Right = null;
         public InfixExpression(Token token, Expression leftExpression, Expression rightExpression)
         {
             Operator = token;
-            LeftExpression = leftExpression;
-            RightExpression = rightExpression;
+            Left = leftExpression;
+            Right = rightExpression;
         }
 
         public InfixExpression()
