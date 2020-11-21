@@ -20,7 +20,7 @@ namespace grasslang
     }
     public class Block : Node
     {
-        public List<Node> body = new List<Node>();
+        public List<Node> Body = new List<Node>();
         public Block()
         {
 
@@ -81,7 +81,7 @@ namespace grasslang
         }
     }
 
-    public class LiteralExpression : Expression
+    public class TextExpression : Expression
     {
         public string Literal = "";
     }
@@ -97,13 +97,13 @@ namespace grasslang
             Value = value;
         }
     }
-    [DebuggerDisplay("ChildrenExpression = \"{Literal}\"")]
-    public class ChildrenExpression : LiteralExpression
+    [DebuggerDisplay("PathExpression = \"{Literal}\"")]
+    public class PathExpression : TextExpression
     {
-        public List<IdentifierExpression> Layers = new List<IdentifierExpression>();
+        public List<Expression> Path = new List<Expression>();
     }
     [DebuggerDisplay("IdentifierExpression = \"{Literal}\"")]
-    public class IdentifierExpression : LiteralExpression
+    public class IdentifierExpression : TextExpression
     {
         public Token Token = null;
 
@@ -117,10 +117,10 @@ namespace grasslang
     [DebuggerDisplay("CallExpression = \"{FunctionName.Literal}\"")]
     public class CallExpression : Expression
     {
-        public LiteralExpression FunctionName;
+        public TextExpression FunctionName;
         public Expression[] ArgsList;
         
-        public CallExpression(LiteralExpression functionName, Expression[] argsList)
+        public CallExpression(TextExpression functionName, Expression[] argsList)
         {
             FunctionName = functionName;
             ArgsList = argsList;
@@ -138,12 +138,12 @@ namespace grasslang
     {
         public IdentifierExpression Name;
         public Expression Value = null;
-        public LiteralExpression ObjType;
+        public TextExpression ObjType;
         public DefinitionExpression()
         {
 
         }
-        public DefinitionExpression(IdentifierExpression Name, LiteralExpression Type, Expression Value = null)
+        public DefinitionExpression(IdentifierExpression Name, TextExpression Type, Expression Value = null)
         {
             this.Name = Name;
             this.ObjType = Type;
@@ -180,9 +180,9 @@ namespace grasslang
     public class FunctionStatement : Statement
     {
         public IdentifierExpression FunctionName = null;
-        public List<Expression> ArgumentList = new List<Expression>();
-        public Block body = null;
-        public LiteralExpression ReturnType;
+        public List<DefinitionExpression> Parameters = new List<DefinitionExpression>();
+        public Block Body = null;
+        public TextExpression ReturnType;
         public FunctionStatement()
         {
 
@@ -190,7 +190,7 @@ namespace grasslang
     }
     public class AssignExpression : Expression
     {
-        public LiteralExpression Left;
+        public TextExpression Left;
         public Expression Right;
     }
     public class SubscriptExpression : Expression

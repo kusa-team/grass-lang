@@ -10,46 +10,47 @@ namespace grasslang
     {
         public enum TokenType
         {
-            ASSIGN, // =
-            NOT, // !
+            Assign, // =
+            Not, // !
             
-            PLUS, // +
-            MINUS, // -
-            ASTERISK, // *
-            SLASH, // /
+            Plus, // +
+            Minus, // -
+            Asterisk, // *
+            Slash, // /
             
-            LT, // <
-            GT, // >
+            LessThen, // <
+            GreaterThen, // >
             
-            EQ, // ==
-            NOT_EQ, // !=
+            Equal, // ==
+            NotEqual, // !=
             
-            COMMA, // ,
-            SEMICOLON, // ;
-            DOT, // .
-            COLON, // :
+            Comma, // ,
+            Semicolon, // ;
+            Dot, // .
+            Colon, // :
 
-            LPAREN, // (
-            RPAREN, // )
-            LBRACE, // {
-            RBRACE, // }
-            LBRACK, // [
-            RBRACK, // ]
+            LeftParen, // (
+            RightParen, // )
+            LeftBrace, // {
+            RightBrace, // }
+            LeftBrack, // [
+            RightBrack, // ]
 
 
-            FUNCTION,
-            LET,
-            TRUE,
-            FALSE,
-            IF,
-            ELSE,
-            RETURN,
-            
-            EOF,
-            IDENTIFER,
-            STRING,
-            NUMBER,
-            INTERNAL,
+            Function,
+            Let,
+            True,
+            False,
+            If,
+            Else,
+            Return,
+
+            NextLine,
+            Eof,
+            Identifier,
+            String,
+            Number,
+            Internal
 
         }
 
@@ -67,7 +68,7 @@ namespace grasslang
         {
             get
             {
-                return Token.Create(TokenType.EOF, '\x00');
+                return Token.Create(TokenType.Eof, '\x00');
             }
         }
         public Token(TokenType _type, string _literal)
@@ -148,23 +149,24 @@ namespace grasslang
         }
         public static Dictionary<string, Token.TokenType> KeyworDictionary = new Dictionary<string, Token.TokenType>
         {
-            {"fn", Token.TokenType.FUNCTION},
-            {"let", Token.TokenType.LET},
-            {"true", Token.TokenType.TRUE},
-            {"false", Token.TokenType.FALSE},
-            {"if", Token.TokenType.IF},
-            {"else", Token.TokenType.ELSE},
-            {"return", Token.TokenType.RETURN}
+            {"fn", Token.TokenType.Function},
+            {"let", Token.TokenType.Let},
+            {"true", Token.TokenType.True},
+            {"false", Token.TokenType.False},
+            {"if", Token.TokenType.If},
+            {"else", Token.TokenType.Else},
+            {"return", Token.TokenType.Return},
+            {"\n", Token.TokenType.NextLine }
         };
         public static Token.TokenType GetTokenType(string literal)
         {
-            Token.TokenType type = Token.TokenType.IDENTIFER;
+            Token.TokenType type = Token.TokenType.Identifier;
             if (KeyworDictionary.ContainsKey(literal))
             {
                 type = KeyworDictionary[literal];
             } else if (IsNumberString(literal))
             {
-                type = Token.TokenType.NUMBER;
+                type = Token.TokenType.Number;
             }
             return type;
         }
@@ -215,12 +217,12 @@ namespace grasslang
                     {
                         if (PeekChar() == '=') // is '=' or '=='
                         {
-                            tok = Token.CreateWithString(Token.TokenType.EQ, "==");
+                            tok = Token.CreateWithString(Token.TokenType.Equal, "==");
                             NextChar(); // eat second '='
                         }
                         else
                         {
-                            tok = Token.Create(Token.TokenType.ASSIGN, ch);
+                            tok = Token.Create(Token.TokenType.Assign, ch);
                         }
                         break;
                     }
@@ -228,12 +230,12 @@ namespace grasslang
                     {
                         if (PeekChar() == '=') // is '!' or '!='
                         {
-                            tok = Token.CreateWithString(Token.TokenType.NOT_EQ, "!=");
+                            tok = Token.CreateWithString(Token.TokenType.NotEqual, "!=");
                             NextChar(); // eat second '='
                         }
                         else
                         {
-                            tok = Token.Create(Token.TokenType.NOT, ch);
+                            tok = Token.Create(Token.TokenType.Not, ch);
                         }
                         break;
                     }
@@ -242,17 +244,17 @@ namespace grasslang
                 // + - * /
                 case '+':
                     {
-                        tok = Token.Create(Token.TokenType.PLUS, ch);
+                        tok = Token.Create(Token.TokenType.Plus, ch);
                         break;
                     }
                 case '-':
                     {
-                        tok = Token.Create(Token.TokenType.MINUS, ch);
+                        tok = Token.Create(Token.TokenType.Minus, ch);
                         break;
                     }
                 case '*':
                     {
-                        tok = Token.Create(Token.TokenType.ASTERISK, ch);
+                        tok = Token.Create(Token.TokenType.Asterisk, ch);
                         break;
                     }
                 case '/':
@@ -265,7 +267,7 @@ namespace grasslang
                         }
                         else
                         {
-                            tok = Token.Create(Token.TokenType.SLASH, ch);
+                            tok = Token.Create(Token.TokenType.Slash, ch);
                         }
                         
                         break;
@@ -275,12 +277,12 @@ namespace grasslang
                 // < >
                 case '<':
                     {
-                        tok = Token.Create(Token.TokenType.LT, ch);
+                        tok = Token.Create(Token.TokenType.LessThen, ch);
                         break;
                     }
                 case '>':
                     {
-                        tok = Token.Create(Token.TokenType.GT, ch);
+                        tok = Token.Create(Token.TokenType.GreaterThen, ch);
                         break;
                     }
 
@@ -288,65 +290,65 @@ namespace grasslang
                 // , ; . :
                 case ',':
                     {
-                        tok = Token.Create(Token.TokenType.COMMA, ch);
+                        tok = Token.Create(Token.TokenType.Comma, ch);
                         break;
                     }
                 case ';':
                     {
-                        tok = Token.Create(Token.TokenType.SEMICOLON, ch);
+                        tok = Token.Create(Token.TokenType.Semicolon, ch);
                         break;
                     }
                 case '.':
                     {
-                        tok = Token.Create(Token.TokenType.DOT, ch);
+                        tok = Token.Create(Token.TokenType.Dot, ch);
                         break;
                     }
                 case ':':
                     {
-                        tok = Token.Create(Token.TokenType.COLON, ch);
+                        tok = Token.Create(Token.TokenType.Colon, ch);
                         break;
                     }
 
                 // ( ) { }
                 case '(':
                     {
-                        tok = Token.Create(Token.TokenType.LPAREN, ch);
+                        tok = Token.Create(Token.TokenType.LeftParen, ch);
                         break;
                     }
                 case ')':
                     {
-                        tok = Token.Create(Token.TokenType.RPAREN, ch);
+                        tok = Token.Create(Token.TokenType.RightParen, ch);
                         break;
                     }
                 case '{':
                     {
-                        tok = Token.Create(Token.TokenType.LBRACE, ch);
+                        tok = Token.Create(Token.TokenType.LeftBrace, ch);
                         break;
                     }
                 case '}':
                     {
-                        tok = Token.Create(Token.TokenType.RBRACE, ch);
+                        tok = Token.Create(Token.TokenType.RightBrace, ch);
                         break;
                     }
                 case '[':
                     {
-                        tok = Token.Create(Token.TokenType.LBRACK, ch);
+                        tok = Token.Create(Token.TokenType.LeftBrack, ch);
                         break;
                     }
                 case ']':
                     {
-                        tok = Token.Create(Token.TokenType.RBRACK, ch);
+                        tok = Token.Create(Token.TokenType.RightBrack, ch);
                         break;
                     }
                 // string
                 case '"':
                     {
-                        tok = Token.CreateWithString(Token.TokenType.STRING, ReadString());
+                        tok = Token.CreateWithString(Token.TokenType.String, ReadString());
                         break;
                     }
                 case '\'':
                     {
-                        tok = Token.CreateWithString(Token.TokenType.STRING, ReadString());
+                        tok = Token.CreateWithString(Token.TokenType.String, ReadString());
                         break;
                     }
                 // internal code
@@ -354,7 +356,7 @@ namespace grasslang
                     {
                         if (NextChar() == '`')
                         {
-                            tok = Token.CreateWithString(Token.TokenType.INTERNAL, ReadString());
+                            tok = Token.CreateWithString(Token.TokenType.Internal, ReadString());
                         } else
                         {
                             // handle error
