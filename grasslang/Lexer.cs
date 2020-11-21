@@ -45,7 +45,7 @@ namespace grasslang
             Else,
             Return,
 
-            NextLine,
+            NextLine, // 保留，以后可能会用
             Eof,
             Identifier,
             String,

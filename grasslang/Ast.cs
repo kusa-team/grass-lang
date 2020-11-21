@@ -120,19 +120,8 @@ namespace grasslang
     [DebuggerDisplay("CallExpression = \"{FunctionName.Literal}\"")]
     public class CallExpression : Expression
     {
-        public TextExpression FunctionName;
-        public Expression[] ArgsList;
-        
-        public CallExpression(TextExpression functionName, Expression[] argsList)
-        {
-            FunctionName = functionName;
-            ArgsList = argsList;
-        }
-
-        public CallExpression()
-        {
-            
-        }
+        public Expression Function;
+        public List<Expression> Parameters;
     }
 
 
@@ -208,5 +197,11 @@ namespace grasslang
             Token = token;
             Value = value;
         }
+    }
+    public class IfExpression : Expression
+    {
+        public Expression Condition;
+        public BlockStatement Consequence;
+        public BlockStatement Alternative;
     }
 }
