@@ -13,7 +13,10 @@ namespace grasslang
             sw1.Stop();
             
             Stopwatch sw2 = Stopwatch.StartNew();
-            AstParser parser = new AstParser(lexer);
+            AstParser parser = new AstParser();
+            parser.Lexer = lexer;
+            parser.InitParser();
+
             Ast ast = parser.BuildAst();
             sw2.Stop();
             /*

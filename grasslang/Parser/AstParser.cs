@@ -27,7 +27,8 @@ namespace grasslang
 
             {Token.TokenType.LeftParen, Priority.Call},
             {Token.TokenType.LeftBrack, Priority.Index},
-            {Token.TokenType.Identifier, Priority.Prefix }
+            {Token.TokenType.Identifier, Priority.Prefix },
+            {Token.TokenType.LeftBrace, Priority.Lowest }
         };
 
         public static Priority QueryPriority(Token.TokenType type)
@@ -38,123 +39,144 @@ namespace grasslang
             }
             return Priority.Lowest;
         }
-        private LexerInterface lexer = null;
+        public LexerInterface Lexer = null;
 
         private Token current
         {
             get
             {
-                return lexer.CurrentToken();
+                return Lexer.CurrentToken();
             }
         }
-        public AstParser(LexerInterface _lexer)
+        private Token peek
         {
-            lexer = _lexer;
-        }
-        private Token PeekToken()
-        {
-            return lexer.PeekToken();
+            get
+            {
+                return Lexer.PeekToken();
+            }
         }
         private Token NextToken()
         {
-            return lexer.GetNextToken();
-        }
-
-        private Node GetNextNode()
-        {
-            return ParseStatement();
+            return Lexer.GetNextToken();
         }
         public Ast BuildAst()
         {
             Ast result = new Ast();
             NextToken();
-            while (lexer.PeekToken().Type != Token.TokenType.Eof)
+            while (Lexer.PeekToken().Type != Token.TokenType.Eof)
             {
-                result.Root.Add(GetNextNode());
+                Statement statement = ParseStatement();
+                if (statement != null)
+                {
+                    result.Root.Add(statement);
+                }
             }
             return result;
         }
+
+        private Dictionary<Token.TokenType, Func<Expression>> prefixParserMap = new Dictionary<Token.TokenType, Func<Expression>>();
+        private Func<Expression> getPrefixParserFunction(Token.TokenType type)
+        {
+            try
+            {
+                return prefixParserMap[type];
+            } catch
+            {
+                return null;
+            }
+        }
+        private Dictionary<Token.TokenType, Func<Expression, Expression>> infixParserMap = new Dictionary<Token.TokenType, Func<Expression, Expression>>();
+        private Func<Expression, Expression> getInfixParserFunction(Token.TokenType type)
+        {
+            try
+            {
+                return infixParserMap[type];
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        public void InitParser()
+        {
+            // prefix
+            prefixParserMap[Token.TokenType.Function] = parseFunctionLiteral;
+            prefixParserMap[Token.TokenType.Identifier] = parseIdentifierExpression;
+
+            // infix
+            infixParserMap[Token.TokenType.Colon] = parseDefinitionExpression;
+            infixParserMap[Token.TokenType.Dot] = parsePathExpression;
+        }
+
+
         private Statement ParseStatement()
         {
             switch (current.Type)
             {
                 case Token.TokenType.Let:
                     {
-                        LetStatement letStatement = new LetStatement();
-                        lexer.GetNextToken(); // eat 'let'
-                        if (ParseExpression(Priority.Lowest) is DefinitionExpression definitionExpression)
-                        {
-                            letStatement.Definition = definitionExpression;
-                        }
-                        return letStatement;
+                        return null;
                     }
                 case Token.TokenType.Return:
                     {
-                        ReturnStatement returnStatement = new ReturnStatement();
-                        if (lexer.PeekToken().Type != Token.TokenType.Semicolon)
-                        {
-                            lexer.GetNextToken();
-                            returnStatement.Value = ParseExpression(Priority.Lowest);
-                        }
-                        return returnStatement;
-                    }
-                case Token.TokenType.Function:
-                    {
-                        return parseFunctionLiteral();
+                        return null;
                     }
             }
             return ParseExpressionStatement();
         }
 
 
-        private FunctionStatement parseFunctionLiteral()
+        private Expression parseFunctionLiteral()
         {
-            FunctionStatement function = new FunctionStatement();
+            FunctionLiteral function = new FunctionLiteral();
             NextToken();
+
+
             // parse function name
-            if (ParsePrefixExpression() is IdentifierExpression functionName)
+            if (parseIdentifierExpression() is IdentifierExpression functionName)
             {
                 function.FunctionName = functionName;
-            }
-            else
+                NextToken();
+            } else
             {
-                // handle error
-                InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_NAME_INVALID);
+                function.Anonymous = true;
             }
 
             // parse function parameters
-            if(NextToken().Type != Token.TokenType.LeftParen)
+            if(current.Type != Token.TokenType.LeftParen)
             {
                 return null;
             }
             function.Parameters = parseFunctionParameters();
 
             // parse function return type
-            if (current.Type == Token.TokenType.Colon)
-            {
-                NextToken();
-                function.ReturnType = parseTextExpression();
-            } else
+            if (peek.Type == Token.TokenType.LeftBrace)
             {
                 function.ReturnType = Expression.Void;
-            }
-
-            if (PeekToken().Type != Token.TokenType.LeftBrace)
+                NextToken();
+            } else if (peek.Type == Token.TokenType.Colon)
             {
-                return null;
+                NextToken();
+                NextToken();
+                if (ParseExpression(Priority.Lowest) is TextExpression type)
+                {
+                    function.ReturnType = type;
+                }
             }
             NextToken();
+
             // parse function body
-            Block body = parseBlock();
-            function.Body = body;
+            if (parseBlockStatement() is BlockStatement block)
+            {
+                function.Body = block;
+            }
             return function;
         }
         private List<DefinitionExpression> parseFunctionParameters()
         {
             List<DefinitionExpression> result = new List<DefinitionExpression>();
-            if (PeekToken().Type == Token.TokenType.RightParen)
+            if (peek.Type == Token.TokenType.RightParen)
             {
-                NextToken();
                 NextToken();
                 return result;
             }
@@ -162,21 +184,21 @@ namespace grasslang
             do
             {
                 NextToken();
-                if (parseDefinitionExpression() is DefinitionExpression param)
+                if (ParseExpression(Priority.Lowest) is DefinitionExpression param)
                 {
                     result.Add(param);
+                    NextToken();
                 } else
                 {
                     return null;
                 }
             } while (current.Type != Token.TokenType.RightParen);
-            NextToken();
             return result;
         }
 
 
 
-        private Block parseBlock()
+        private Statement parseBlockStatement()
         {
             return null;
         }
@@ -185,7 +207,7 @@ namespace grasslang
         private ExpressionStatement ParseExpressionStatement()
         {
             Expression expression = ParseExpression(Priority.Lowest);
-            if (PeekToken().Type != Token.TokenType.Semicolon)
+            if (peek.Type != Token.TokenType.Semicolon)
             {
                 return null;
             }
@@ -193,187 +215,36 @@ namespace grasslang
         }
         private Expression ParseExpression(Priority priority)
         {
-            Expression leftExpression = ParsePrefixExpression();
-            if (leftExpression == null)
+            Func<Expression> prefixFunc = getPrefixParserFunction(current.Type);
+            if(prefixFunc == null)
             {
                 return null;
             }
+            Expression left = prefixFunc();
 
-            Token peek = lexer.PeekToken();
             while (peek.Type != Token.TokenType.Semicolon
                    && priority <= QueryPriority(peek.Type))
             {
-                lexer.GetNextToken();
-                Expression infix = ParseInfixExpression(leftExpression);
-                if (infix == null)
+                Func<Expression, Expression> infixFunc = getInfixParserFunction(peek.Type);
+                if(infixFunc == null)
                 {
-                    return leftExpression;
+                    return left;
                 }
-                leftExpression = infix;
-                peek = lexer.PeekToken();
+                NextToken();
+                left = infixFunc(left);
+                
             }
 
-
-            return leftExpression;
-        }
-        private Expression ParsePrefixExpression()
-        {
-            switch (current.Type)
-            {
-                case Token.TokenType.Identifier:
-                    {
-                        return new IdentifierExpression(current, current.Literal);
-                    }
-                case Token.TokenType.Plus:
-                    {
-                        return ParsePrefixDefault();
-                    }
-                case Token.TokenType.Minus:
-                    {
-                        return ParsePrefixDefault();
-                    }
-                case Token.TokenType.String:
-                    {
-                        return new StringExpression(current, current.Literal);
-                    }
-                case Token.TokenType.Internal:
-                    {
-                        return new InternalCode(current, current.Literal);
-                    }
-                case Token.TokenType.True:
-                    {
-                        return new IdentifierExpression(current, current.Literal);
-                    }
-                case Token.TokenType.False:
-                    {
-                        return new IdentifierExpression(current, current.Literal);
-                    }
-            }
-
-            return null;
+            return left;
         }
         private Expression HandleInfixExpression(Expression leftExpression)
         {
             InfixExpression expression = new InfixExpression();
             expression.LeftExpression = leftExpression;
             expression.Operator = current;
-            lexer.GetNextToken();
+            Lexer.GetNextToken();
             expression.RightExpression = ParseExpression(QueryPriority(expression.Operator.Type));
             return expression;
-        }
-        private Expression ParseInfixExpression(Expression leftExpression)
-        {
-            switch (PeekToken().Type)
-            {
-                case Token.TokenType.Plus:
-                    {
-                        return HandleInfixExpression(leftExpression);
-                    }
-                case Token.TokenType.Minus:
-                    {
-                        return HandleInfixExpression(leftExpression);
-                    }
-                case Token.TokenType.Asterisk:
-                    {
-                        return HandleInfixExpression(leftExpression);
-                    }
-                case Token.TokenType.Slash:
-                    {
-                        return HandleInfixExpression(leftExpression);
-                    }
-                case Token.TokenType.LeftParen:
-                    {
-                        // Parse Call
-                        CallExpression callExpression = new CallExpression();
-                        if (leftExpression is TextExpression TextExpression)
-                        {
-                            callExpression.FunctionName = TextExpression;
-                        }
-                        else
-                        {
-                            InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_NAME_INVALID);
-                            //handle error
-                            break;
-                        }
-                        callExpression.ArgsList = ParseCallArgs(); // now is expression start.
-                        lexer.GetNextToken(); // eat ')'
-                        return callExpression;
-                    }
-                case Token.TokenType.Dot:
-                    {
-                        if (leftExpression is PathExpression lastLayer)
-                        {
-                            lexer.GetNextToken();
-                            if (ParsePrefixExpression() is IdentifierExpression nextLayer)
-                            {
-                                lastLayer.Path.Add(nextLayer);
-                                lastLayer.Literal += "." + nextLayer.Literal;
-                                return lastLayer;
-                            }
-                            else
-                            {
-                                // handle error
-                            }
-                        }
-                        PathExpression PathExpression = new PathExpression();
-                        if (leftExpression is IdentifierExpression identifierExpression)
-                        {
-                            PathExpression.Path.Add(identifierExpression);
-                            lexer.GetNextToken();
-                            if (ParsePrefixExpression() is IdentifierExpression nextLayer)
-                            {
-                                PathExpression.Path.Add(nextLayer);
-                                PathExpression.Literal = identifierExpression.Literal
-                                    + "." + nextLayer.Literal;
-                            }
-                            else
-                            {
-                                // handle error
-                            }
-                        }
-                        else
-                        {
-                            // handle error
-                        }
-                        return PathExpression;
-                    }
-                case Token.TokenType.Colon:
-                    {
-                        
-                        return parseDefinitionExpression();
-                    }
-                case Token.TokenType.Assign:
-                    {
-                        AssignExpression assignExpression = new AssignExpression();
-                        if (leftExpression is TextExpression TextExpression)
-                        {
-                            assignExpression.Left = TextExpression;
-                        }
-                        else
-                        {
-                            // handle error
-                            throw new Exception();
-                        }
-                        lexer.GetNextToken();
-                        assignExpression.Right = ParseExpression(Priority.Assign);
-                        return assignExpression;
-                    }
-                case Token.TokenType.LeftBrack:
-                    {
-                        SubscriptExpression subscriptExpression = new SubscriptExpression();
-                        subscriptExpression.Body = leftExpression;
-                        lexer.GetNextToken();
-                        subscriptExpression.Subscript = ParseExpression(Priority.Index);
-                        if (lexer.GetNextToken().Type != Token.TokenType.RightBrack)
-                        {
-                            // handle error
-                            throw new Exception();
-                        }
-                        return subscriptExpression;
-                    }
-            }
-
-            return null;
         }
         private IdentifierExpression parseIdentifierExpression()
         {
@@ -383,35 +254,44 @@ namespace grasslang
             }
             return new IdentifierExpression(current, current.Literal);
         }
-        private DefinitionExpression parseDefinitionExpression()
+        private PathExpression parsePathExpression(Expression left)
         {
-            Expression left = parseIdentifierExpression();
+            PathExpression path;
+            if (left is PathExpression leftPath)
+            {
+                path = leftPath;
+            } else
+            {
+                path = new PathExpression();
+                path.Path.Add(left);
+            }
+            NextToken();
+            path.Path.Add(ParseExpression(Priority.Index));
+            return path;
+        }
+
+        private DefinitionExpression parseDefinitionExpression(Expression left)
+        {
             DefinitionExpression definition = new DefinitionExpression();
             if (left is IdentifierExpression Name)
             {
                 definition.Name = Name;
-            }
-            else
+            } else
             {
                 return null;
             }
-            
-            if(PeekToken().Type != Token.TokenType.Colon)
-            {
-                return null;
-            }
+
             NextToken();
-            NextToken();
-            if (parseTextExpression() is TextExpression TextExpression)
+            if (ParseExpression(Priority.Lowest) is TextExpression type)
             {
-                definition.ObjType = TextExpression;
+                definition.ObjType = type;
             }
             else
             {
                 return null;
             }
             // parse value
-            if (PeekToken().Type == Token.TokenType.Assign)
+            if (peek.Type == Token.TokenType.Assign)
             {
                 NextToken();
                 NextToken();
@@ -425,7 +305,6 @@ namespace grasslang
                     definition.Value = value;
                 }
             }
-            NextToken();
             return definition;
         }
         private TextExpression parseTextExpression(Expression leftExpression = null)
@@ -436,7 +315,7 @@ namespace grasslang
             {
                 return null;
             }
-            if (PeekToken().Type == Token.TokenType.Dot)
+            if (peek.Type == Token.TokenType.Dot)
             {
                 PathExpression path;
                 if (left is PathExpression leftPath)
@@ -448,7 +327,7 @@ namespace grasslang
                     path = new PathExpression();
                     path.Path.Add(left);
                 }
-                while (PeekToken().Type == Token.TokenType.Dot)
+                while (peek.Type == Token.TokenType.Dot)
                 {
                     NextToken();
                     NextToken();
@@ -466,15 +345,15 @@ namespace grasslang
         {
             Token peek;
             List<Expression> expressions = new List<Expression>();
-            peek = lexer.PeekToken(); // now is '('
+            peek = Lexer.PeekToken(); // now is '('
             while (peek.Type != Token.TokenType.RightParen)
             {
-                lexer.GetNextToken();
+                Lexer.GetNextToken();
                 expressions.Add(ParseExpression(Priority.Lowest));
-                peek = lexer.PeekToken();
+                peek = Lexer.PeekToken();
                 if (peek.Type == Token.TokenType.Comma)
                 {
-                    lexer.GetNextToken();
+                    Lexer.GetNextToken();
                 }
             }
             return expressions.ToArray();
@@ -483,7 +362,7 @@ namespace grasslang
         {
             PrefixExpression prefixExpression = new PrefixExpression();
             prefixExpression.Token = current;
-            lexer.GetNextToken();
+            Lexer.GetNextToken();
             prefixExpression.Expression = ParseExpression(Priority.Prefix);
             return prefixExpression;
         }

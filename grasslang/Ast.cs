@@ -18,10 +18,10 @@ namespace grasslang
     {
 
     }
-    public class Block : Node
+    public class BlockStatement : Statement
     {
         public List<Node> Body = new List<Node>();
-        public Block()
+        public BlockStatement()
         {
 
         }
@@ -43,6 +43,13 @@ namespace grasslang
             get
             {
                 return new IdentifierExpression(null, "void");
+            }
+        }
+        public static IdentifierExpression Null
+        {
+            get
+            {
+                return new IdentifierExpression(null, "null");
             }
         }
     }
@@ -177,16 +184,13 @@ namespace grasslang
             this.Value = value;
         }
     }
-    public class FunctionStatement : Statement
+    public class FunctionLiteral : Expression
     {
         public IdentifierExpression FunctionName = null;
         public List<DefinitionExpression> Parameters = new List<DefinitionExpression>();
-        public Block Body = null;
+        public BlockStatement Body = null;
         public TextExpression ReturnType;
-        public FunctionStatement()
-        {
-
-        }
+        public bool Anonymous = false;
     }
     public class AssignExpression : Expression
     {
