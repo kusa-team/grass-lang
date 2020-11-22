@@ -102,6 +102,7 @@ namespace grasslang
             // prefix
             prefixParserMap[Token.TokenType.Function] = parseFunctionLiteral;
             prefixParserMap[Token.TokenType.Identifier] = parseIdentifierExpression;
+            prefixParserMap[Token.TokenType.Number] = parseNumberExpression;
             prefixParserMap[Token.TokenType.If] = parseIfExpression;
 
             // infix
@@ -291,6 +292,14 @@ namespace grasslang
                 return null;
             }
             return new IdentifierExpression(current, current.Literal);
+        }
+        private NumberLiteral parseNumberExpression()
+        {
+            if (current.Type != Token.TokenType.Number)
+            {
+                return null;
+            }
+            return new NumberLiteral(current, current.Literal);
         }
         private PathExpression parsePathExpression(Expression left)
         {

@@ -88,13 +88,13 @@ namespace grasslang
     {
         public string Literal = "";
     }
-    [DebuggerDisplay("StringExpression = \"{Value}\"")]
-    public class StringExpression : Expression
+    [DebuggerDisplay("StringLiteral = \"{Value}\"")]
+    public class StringLiteral : Expression
     {
         public Token Token = null;
         public string Value = null;
 
-        public StringExpression(Token token, string value)
+        public StringLiteral(Token token, string value)
         {
             Token = token;
             Value = value;
@@ -203,5 +203,17 @@ namespace grasslang
         public Expression Condition;
         public BlockStatement Consequence;
         public BlockStatement Alternative;
+    }
+    [DebuggerDisplay("NumberLiteral = {Value}")]
+    public class NumberLiteral : Expression
+    {
+        public Token Token;
+        public string Value;
+
+        public NumberLiteral(Token token, string value)
+        {
+            Token = token;
+            Value = value;
+        }
     }
 }

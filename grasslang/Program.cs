@@ -1,15 +1,17 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using grasslang.CodeGens;
+
 namespace grasslang
 {
     class Program
     {
         static void Main(string[] args)
         {
+            string code = File.ReadAllText(args[0]);
+
             Stopwatch sw1 = Stopwatch.StartNew();
-            Lexer lexer = new Lexer(File.ReadAllText(args[0]));
+            Lexer lexer = new Lexer(code);
             sw1.Stop();
             
             Stopwatch sw2 = Stopwatch.StartNew();

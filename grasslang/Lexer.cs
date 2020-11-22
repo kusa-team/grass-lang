@@ -85,6 +85,8 @@ namespace grasslang
         private string code = null;
         private int pos = -1; 
         private char ch = '\x00';
+
+        private Token cachedPeek = null;
         public Lexer(string codestr)
         {
             code = codestr;
@@ -118,31 +120,41 @@ namespace grasslang
         {
             return '0' <= ch && '9' >= ch;
         }
-
+        public static bool IsHex(char ch)
+        {
+            return ('a' <= ch && 'f' >= ch) || ('A' <= ch && 'F' >= ch);
+        }
         public static bool IsNumberString(string str)
         {
             int type = 0; // 0 = int, 1 = float, 2 = hex
             bool result = true;
             foreach (var ch in str)
             {
-                if (!IsNumber(ch) && type == 0)
+                bool isNum = IsNumber(ch);
+                if(!isNum)
                 {
-                    if (ch == 'x' || ch == 'X')
+                    if(type == 0)
                     {
-                        type = 2;
-                    }
-                    else if(ch == '.')
+                        if(ch is 'x' or 'X')
+                        {
+                            type = 2;
+                        } else if (ch is '.')
+                        {
+                            type = 1;
+                        } else
+                        {
+                            result = false;
+                        }
+                    } else if (type == 2)
                     {
-                        type = 1;
-                    }
-                    else
+                        if(!IsHex(ch))
+                        {
+                            result = false;
+                        }
+                    } else
                     {
                         result = false;
                     }
-                }
-                else
-                {
-                    result = false;
                 }
             }
             return result;
@@ -173,13 +185,17 @@ namespace grasslang
 
         public Token PeekToken()
         {
+            if(cachedPeek != null)
+            {
+                return cachedPeek;
+            }
             // 这里...写程序送bug，靠
             int beforePos = pos;
             Token beforeCurrent = current;
             char beforeCh = ch;
             
             Token result = GetNextToken();
-            
+            cachedPeek = result;
             pos = beforePos;
             current = beforeCurrent;
             ch = beforeCh;
@@ -209,6 +225,7 @@ namespace grasslang
         
         public Token GetNextToken()
         {
+            cachedPeek = null;
             SkipWhitespace();
             Token tok = null;
             switch (ch)
