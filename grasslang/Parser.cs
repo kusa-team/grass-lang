@@ -104,6 +104,11 @@ namespace grasslang
             prefixParserMap[Token.TokenType.Identifier] = parseIdentifierExpression;
             prefixParserMap[Token.TokenType.Number] = parseNumberExpression;
             prefixParserMap[Token.TokenType.If] = parseIfExpression;
+            prefixParserMap[Token.TokenType.While] = parseWhileExpression;
+            prefixParserMap[Token.TokenType.Loop] = parseLoopExpression;
+
+            prefixParserMap[Token.TokenType.Plus] = parsePrefixExpression;
+            prefixParserMap[Token.TokenType.Minus] = parsePrefixExpression;
 
             // infix
             infixParserMap[Token.TokenType.Colon] = parseDefinitionExpression;
@@ -115,7 +120,7 @@ namespace grasslang
             infixParserMap[Token.TokenType.Slash] = parseInfixExpression;
 
             infixParserMap[Token.TokenType.Equal] = parseInfixExpression;
-
+            infixParserMap[Token.TokenType.NotEqual] = parseInfixExpression;
 
             infixParserMap[Token.TokenType.LeftParen] = parseCallExpression;
         }
@@ -141,7 +146,7 @@ namespace grasslang
             NextToken();
             LetStatement let = new LetStatement();
 
-            if(parseExpression(Priority.Lowest) is DefinitionExpression definition)
+            if (parseExpression(Priority.Lowest) is DefinitionExpression definition)
             {
                 let.Definition = definition;
             } else
@@ -175,7 +180,7 @@ namespace grasslang
             }
 
             // parse function parameters
-            if(current.Type != Token.TokenType.LeftParen)
+            if (current.Type != Token.TokenType.LeftParen)
             {
                 return null;
             }
@@ -212,7 +217,7 @@ namespace grasslang
                 NextToken();
                 return result;
             }
-            
+
             do
             {
                 NextToken();
@@ -230,7 +235,7 @@ namespace grasslang
 
         private BlockStatement parseBlockStatement()
         {
-            if(current.Type != Token.TokenType.LeftBrace)
+            if (current.Type != Token.TokenType.LeftBrace)
             {
                 return null;
             }
@@ -239,8 +244,8 @@ namespace grasslang
             {
                 NextToken();
                 block.Body.Add(parseStatement());
-                
-                if(peek.Type != Token.TokenType.Semicolon && current.Type != Token.TokenType.RightBrace)
+
+                if (peek.Type != Token.TokenType.Semicolon && current.Type != Token.TokenType.RightBrace)
                 {
                     return null;
                 } else if (peek.Type == Token.TokenType.Semicolon)
@@ -264,7 +269,7 @@ namespace grasslang
         private Expression parseExpression(Priority priority)
         {
             Func<Expression> prefixFunc = getPrefixParserFunction(current.Type);
-            if(prefixFunc == null)
+            if (prefixFunc == null)
             {
                 return null;
             }
@@ -274,20 +279,20 @@ namespace grasslang
                    && priority <= QueryPriority(peek.Type))
             {
                 Func<Expression, Expression> infixFunc = getInfixParserFunction(peek.Type);
-                if(infixFunc == null)
+                if (infixFunc == null)
                 {
                     return left;
                 }
                 NextToken();
                 left = infixFunc(left);
-                
+
             }
 
             return left;
         }
         private IdentifierExpression parseIdentifierExpression()
         {
-            if(current.Type != Token.TokenType.Identifier)
+            if (current.Type != Token.TokenType.Identifier)
             {
                 return null;
             }
@@ -321,7 +326,7 @@ namespace grasslang
             IfExpression ifexpr = new IfExpression();
             NextToken();
             ifexpr.Condition = parseExpression(Priority.Lowest);
-            if(peek.Type != Token.TokenType.LeftBrace)
+            if (peek.Type != Token.TokenType.LeftBrace)
             {
                 return null;
             }
@@ -329,6 +334,38 @@ namespace grasslang
             ifexpr.Consequence = parseBlockStatement();
 
             return ifexpr;
+        }
+        private WhileExpression parseWhileExpression()
+        {
+            WhileExpression whileexpr = new WhileExpression();
+            NextToken();
+            whileexpr.Condition = parseExpression(Priority.Lowest);
+            if (peek.Type != Token.TokenType.LeftBrace)
+            {
+                return null;
+            }
+            NextToken();
+            whileexpr.Consequence = parseBlockStatement();
+            return whileexpr;
+        }
+        private LoopExpression parseLoopExpression()
+        {
+            LoopExpression loopexpr = new LoopExpression();
+            if (peek.Type != Token.TokenType.LeftBrace)
+            {
+                return null;
+            }
+            NextToken();
+            loopexpr.Process = parseBlockStatement();
+            return loopexpr;
+        }
+        private PrefixExpression parsePrefixExpression()
+        {
+            PrefixExpression prefix = new PrefixExpression();
+            prefix.Token = current;
+            NextToken();
+            prefix.Expression = parseExpression(Priority.Prefix);
+            return prefix;
         }
         private InfixExpression parseInfixExpression(Expression left)
         {

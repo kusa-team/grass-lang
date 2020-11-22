@@ -44,6 +44,9 @@ namespace grasslang
             If,
             Else,
             Return,
+            For,
+            Loop,
+            While,
 
             NextLine, // 保留，以后可能会用
             Eof,
@@ -168,7 +171,10 @@ namespace grasslang
             {"if", Token.TokenType.If},
             {"else", Token.TokenType.Else},
             {"return", Token.TokenType.Return},
-            {"\n", Token.TokenType.NextLine }
+            {"for", Token.TokenType.For},
+            {"while", Token.TokenType.While},
+            {"loop", Token.TokenType.Loop},
+            {"\n", Token.TokenType.NextLine}
         };
         public static Token.TokenType GetTokenType(string literal)
         {

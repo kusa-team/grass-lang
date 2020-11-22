@@ -204,6 +204,15 @@ namespace grasslang
         public BlockStatement Consequence;
         public BlockStatement Alternative;
     }
+    public class WhileExpression : Expression
+    {
+        public Expression Condition;
+        public BlockStatement Consequence;
+    }
+    public class LoopExpression : Expression
+    {
+        public BlockStatement Process;
+    }
     [DebuggerDisplay("NumberLiteral = {Value}")]
     public class NumberLiteral : Expression
     {
