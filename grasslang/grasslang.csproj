@@ -5,7 +5,14 @@
         <TargetFramework>net472</TargetFramework>
     </PropertyGroup>
 
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+      <LangVersion>9.0</LangVersion>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+      <LangVersion>9.0</LangVersion>
+    </PropertyGroup>
     <ItemGroup>
       <Folder Include="CodeGen\" />
+      <Folder Include="Parser\" />
     </ItemGroup>
 </Project>

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace grasslang
 {
-    public class Parser
+    public class AstParser
     {
         public enum Priority
         {
@@ -17,20 +17,24 @@ namespace grasslang
             Product = 6,//*,/
             Prefix = 7, // !,-,+
             Call = 8, // func() 
-            
-            High = 9
         }
         public static Dictionary<Token.TokenType, Priority> PriorityMap = new Dictionary<Token.TokenType, Priority>
         {
-            {Token.TokenType.PLUS, Priority.Sum},
-            {Token.TokenType.MINUS, Priority.Sum},
-            {Token.TokenType.ASTERISK, Priority.Product},
-            {Token.TokenType.SLASH, Priority.Product},
+            {Token.TokenType.Plus, Priority.Sum},
+            {Token.TokenType.Minus, Priority.Sum},
+            {Token.TokenType.Asterisk, Priority.Product},
+            {Token.TokenType.Slash, Priority.Product},
 
-            {Token.TokenType.LPAREN, Priority.Call},
-            {Token.TokenType.LBRACK, Priority.Index}
+            {Token.TokenType.LeftParen, Priority.Call},
+            {Token.TokenType.LeftBrack, Priority.Index},
+            {Token.TokenType.Identifier, Priority.Prefix },
+
+            {Token.TokenType.Equal, Priority.Equals }
         };
-
+        public static Priority QueryPriority(Token token)
+        {
+            return QueryPriority(token.Type);
+        }
         public static Priority QueryPriority(Token.TokenType type)
         {
             if (PriorityMap.ContainsKey(type))
@@ -39,389 +43,404 @@ namespace grasslang
             }
             return Priority.Lowest;
         }
-        private LexerInterface lexer = null;
+        public LexerInterface Lexer = null;
 
         private Token current
         {
             get
             {
-                return lexer.CurrentToken();
+                return Lexer.CurrentToken();
             }
         }
-        public Parser(LexerInterface _lexer)
+        private Token peek
         {
-            lexer = _lexer;
+            get
+            {
+                return Lexer.PeekToken();
+            }
         }
-
-        private Node GetNextNode()
+        private Token NextToken()
         {
-            return ParseStatement();
+            return Lexer.GetNextToken();
         }
         public Ast BuildAst()
         {
             Ast result = new Ast();
-            while (lexer.PeekToken().Type != Token.TokenType.EOF)
+            NextToken();
+            while (Lexer.PeekToken().Type != Token.TokenType.Eof)
             {
-                lexer.GetNextToken();
-                result.Root.Add(GetNextNode());
-                lexer.GetNextToken();
+                Statement statement = parseStatement();
+                if (statement != null)
+                {
+                    result.Root.Add(statement);
+                }
+                NextToken();
             }
             return result;
         }
 
-
-
-        private Statement ParseStatement()
+        private Dictionary<Token.TokenType, Func<Expression>> prefixParserMap = new Dictionary<Token.TokenType, Func<Expression>>();
+        private Func<Expression> getPrefixParserFunction(Token.TokenType type)
         {
-            switch (current.Type)
+            if (prefixParserMap.ContainsKey(type))
             {
-                case Token.TokenType.LET:
-                    {
-                        LetStatement letStatement = new LetStatement();
-                        lexer.GetNextToken(); // eat 'let'
-                        if (ParseExpression(Priority.Lowest) is DefinitionExpression definitionExpression)
-                        {
-                            letStatement.Definition = definitionExpression;
-                        }
-                        return letStatement;
-                    }
-                case Token.TokenType.RETURN:
-                    {
-                        ReturnStatement returnStatement = new ReturnStatement();
-                        if (lexer.PeekToken().Type != Token.TokenType.SEMICOLON)
-                        {
-                            lexer.GetNextToken();
-                            returnStatement.Value = ParseExpression(Priority.Lowest);
-                        }
-                        return returnStatement;
-                    }
-                case Token.TokenType.FUNCTION:
-                    {
-                        FunctionStatement functionStatement = new FunctionStatement();
-                        lexer.GetNextToken();
-                        // parse function name
-                        if (ParsePrefixExpression() is IdentifierExpression functionName)
-                        {
-                            functionStatement.FunctionName = functionName;
-                        } else
-                        {
-                            // handle error
-                            InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_NAME_INVALID);
-                            
-                        }
-                        // parse function arguments
-                        lexer.GetNextToken();
-                        if (lexer.PeekToken().Type == Token.TokenType.IDENTIFER)
-                        {
-                            while (lexer.PeekToken().Type == Token.TokenType.IDENTIFER)
-                            {
-                                lexer.GetNextToken();
-                                if (ParseExpression(Priority.Lowest, Token.TokenType.COMMA)
-                                    is DefinitionExpression definition)
-                                {
-                                    functionStatement.ArgumentList.Add(definition);
-                                    lexer.GetNextToken();
-                                }
-                                else
-                                {
-                                    // handle error
-                                    InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_ARGUMENT_INVALID);
-                                }
-                            }
-                        } else
-                        {
-                            lexer.GetNextToken(); // skip ')'
-                        }
-                        lexer.GetNextToken();
-                        // parse function return type
-                        if (current.Type != Token.TokenType.COLON)
-                        {
-                            functionStatement.ReturnType = Expression.Void;
-                        } else
-                        {
-                            if(lexer.PeekToken().Type != Token.TokenType.IDENTIFER)
-                            {
-                                // handle error
-                                InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_TYPE_INVALID);
-                            }
-                            lexer.GetNextToken();
-                            if(ParseExpression(Priority.Lowest, Token.TokenType.LBRACE) is LiteralExpression returnType)
-                            {
-                                functionStatement.ReturnType = returnType;
-                                lexer.GetNextToken();
-                            }
-                        }
-                        // parse function body
-                        if (current.Type != Token.TokenType.LBRACE)
-                        {
-                            // handle error
-                            InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_BODY_INVALID);
-                        }
-                        Block body = new Block();
-                        while(lexer.PeekToken().Type != Token.TokenType.RBRACE)
-                        {
-                            lexer.GetNextToken();
-                            body.body.Add(GetNextNode());
-                            lexer.GetNextToken();
-                        }
-                        functionStatement.body = body;
-                        return functionStatement;
-                    }
+                return prefixParserMap[type];
             }
-            return ParseExpressionStatement();
-        }
-
-        private ExpressionStatement ParseExpressionStatement()
-        {
-            return new ExpressionStatement(ParseExpression(Priority.Lowest));
-        }
-        private Expression ParseExpression(Priority priority, Token.TokenType stopTag = Token.TokenType.SEMICOLON)
-        {
-            return ParseExpression(priority, (type) =>
-            {
-                return type != stopTag;
-            });
-        }
-        private Expression ParseExpression(Priority priority, Func<Token.TokenType, bool> stopFunc)
-        {
-            Expression leftExpression = ParsePrefixExpression();
-            if (leftExpression == null)
-            {
-                // handle error
-                InfoHandler.PrintFormatedError(InfoHandler.ErrorType.EXPRESSION_INVALID);
-            }
-
-            Token peek = lexer.PeekToken();
-            while (stopFunc(peek.Type)
-                   && peek.Type != Token.TokenType.EOF
-                   && peek.Type != Token.TokenType.RPAREN
-                   && priority <= QueryPriority(peek.Type))
-            {
-                // handle infix
-                lexer.GetNextToken();
-                leftExpression = ParseInfixExpression(leftExpression);
-
-                peek = lexer.PeekToken();
-            }
-
-
-            return leftExpression;
-        }
-        private Expression HandleInfixExpression(Expression leftExpression)
-        {
-            InfixExpression expression = new InfixExpression();
-            expression.LeftExpression = leftExpression;
-            expression.Operator = current;
-            lexer.GetNextToken();
-            expression.RightExpression = ParseExpression(QueryPriority(expression.Operator.Type));
-            return expression;
-        }
-        private Expression ParseInfixExpression(Expression leftExpression)
-        {
-            switch (current.Type)
-            {
-                case Token.TokenType.PLUS:
-                    {
-                        return HandleInfixExpression(leftExpression);
-                    }
-                case Token.TokenType.MINUS:
-                    {
-                        return HandleInfixExpression(leftExpression);
-                    }
-                case Token.TokenType.ASTERISK:
-                    {
-                        return HandleInfixExpression(leftExpression);
-                    }
-                case Token.TokenType.SLASH:
-                    {
-                        return HandleInfixExpression(leftExpression);
-                    }
-                case Token.TokenType.LPAREN:
-                    {
-                        // Parse Call
-                        CallExpression callExpression = new CallExpression();
-                        if (leftExpression is LiteralExpression literalExpression)
-                        {
-                            callExpression.FunctionName = literalExpression;
-                        }
-                        else
-                        {
-                            InfoHandler.PrintFormatedError(InfoHandler.ErrorType.FUNCTION_NAME_INVALID);
-                            //handle error
-                            break;
-                        }
-                        callExpression.ArgsList = ParseCallArgs(); // now is expression start.
-                        lexer.GetNextToken(); // eat ')'
-                        return callExpression;
-                    }
-                case Token.TokenType.DOT:
-                    {
-                        if (leftExpression is ChildrenExpression lastLayer)
-                        {
-                            lexer.GetNextToken();
-                            if(ParsePrefixExpression() is IdentifierExpression nextLayer)
-                            {
-                                lastLayer.Layers.Add(nextLayer);
-                                lastLayer.Literal += "." + nextLayer.Literal;
-                                return lastLayer;
-                            } else
-                            {
-                                // handle error
-                            }
-                        }
-                        ChildrenExpression childrenExpression = new ChildrenExpression();
-                        if (leftExpression is IdentifierExpression identifierExpression)
-                        {
-                            childrenExpression.Layers.Add(identifierExpression);
-                            lexer.GetNextToken();
-                            if (ParsePrefixExpression() is IdentifierExpression nextLayer)
-                            {
-                                childrenExpression.Layers.Add(nextLayer);
-                                childrenExpression.Literal = identifierExpression.Literal
-                                    +  "." + nextLayer.Literal;
-                            }
-                            else
-                            {
-                                // handle error
-                            }
-                        } else
-                        {
-                            // handle error
-                        }
-                        return childrenExpression;
-                    }
-                case Token.TokenType.COLON:
-                    {
-                        DefinitionExpression definition = new DefinitionExpression();
-                        if(leftExpression is IdentifierExpression Name)
-                        {
-                            definition.Name = Name;
-                        } else
-                        {
-                            // handle error
-                        }
-                        lexer.GetNextToken();
-                        // parse type
-                        if(ParseExpression(Priority.Lowest, (type) =>
-                        {
-                            return type == Token.TokenType.IDENTIFER || type == Token.TokenType.DOT;
-                        }) is LiteralExpression literalExpression)
-                        {
-                            definition.ObjType = literalExpression;
-                        } else
-                        {
-                            // handle error
-                        }
-                        // parse value
-                        if(lexer.PeekToken().Type == Token.TokenType.ASSIGN)
-                        {
-                            lexer.GetNextToken();
-                            lexer.GetNextToken();
-                            Expression value = ParseExpression(Priority.Lowest);
-                            if(value == null)
-                            {
-                                // handle error
-                            } else
-                            {
-                                definition.Value = value;
-                            }
-                        }
-
-                        return definition;
-                    }
-                case Token.TokenType.ASSIGN:
-                    {
-                        AssignExpression assignExpression = new AssignExpression();
-                        if(leftExpression is LiteralExpression literalExpression)
-                        {
-                            assignExpression.Left = literalExpression;
-                        } else
-                        {
-                            // handle error
-                            throw new Exception();
-                        }
-                        lexer.GetNextToken();
-                        assignExpression.Right = ParseExpression(Priority.Assign);
-                        return assignExpression;
-                    }
-                case Token.TokenType.LBRACK:
-                    {
-                        SubscriptExpression subscriptExpression = new SubscriptExpression();
-                        subscriptExpression.Body = leftExpression;
-                        lexer.GetNextToken();
-                        subscriptExpression.Subscript = ParseExpression(Priority.Index, Token.TokenType.RBRACK);
-                        if(lexer.GetNextToken().Type != Token.TokenType.RBRACK)
-                        {
-                            // handle error
-                            throw new Exception();
-                        }
-                        return subscriptExpression;
-                    }
-            }
-
             return null;
         }
-
-        private Expression[] ParseCallArgs()
+        private Dictionary<Token.TokenType, Func<Expression, Expression>> infixParserMap = new Dictionary<Token.TokenType, Func<Expression, Expression>>();
+        private Func<Expression, Expression> getInfixParserFunction(Token.TokenType type)
         {
-            Token peek;
-            List<Expression> expressions = new List<Expression>();
-            peek = lexer.PeekToken(); // now is '('
-            while (peek.Type != Token.TokenType.RPAREN)
+            if (infixParserMap.ContainsKey(type))
             {
-                lexer.GetNextToken();
-                expressions.Add(ParseExpression(Priority.Lowest, Token.TokenType.COMMA));
-                peek = lexer.PeekToken();
-                if (peek.Type == Token.TokenType.COMMA)
+                return infixParserMap[type];
+            }
+            return null;
+        }
+        public void InitParser()
+        {
+            // prefix
+            prefixParserMap[Token.TokenType.Function] = parseFunctionLiteral;
+            prefixParserMap[Token.TokenType.Identifier] = parseIdentifierExpression;
+            prefixParserMap[Token.TokenType.Number] = parseNumberExpression;
+            prefixParserMap[Token.TokenType.If] = parseIfExpression;
+            prefixParserMap[Token.TokenType.While] = parseWhileExpression;
+            prefixParserMap[Token.TokenType.Loop] = parseLoopExpression;
+
+            prefixParserMap[Token.TokenType.Plus] = parsePrefixExpression;
+            prefixParserMap[Token.TokenType.Minus] = parsePrefixExpression;
+
+            // infix
+            infixParserMap[Token.TokenType.Colon] = parseDefinitionExpression;
+            infixParserMap[Token.TokenType.Dot] = parsePathExpression;
+
+            infixParserMap[Token.TokenType.Plus] = parseInfixExpression;
+            infixParserMap[Token.TokenType.Minus] = parseInfixExpression;
+            infixParserMap[Token.TokenType.Asterisk] = parseInfixExpression;
+            infixParserMap[Token.TokenType.Slash] = parseInfixExpression;
+
+            infixParserMap[Token.TokenType.Equal] = parseInfixExpression;
+            infixParserMap[Token.TokenType.NotEqual] = parseInfixExpression;
+
+            infixParserMap[Token.TokenType.LeftParen] = parseCallExpression;
+        }
+
+
+        private Statement parseStatement()
+        {
+            switch (current.Type)
+            {
+                case Token.TokenType.Let:
+                    {
+                        return parseLetStatement();
+                    }
+                case Token.TokenType.Return:
+                    {
+                        return parseReturnStatement();
+                    }
+            }
+            return parseExpressionStatement();
+        }
+        private LetStatement parseLetStatement()
+        {
+            NextToken();
+            LetStatement let = new LetStatement();
+
+            if (parseExpression(Priority.Lowest) is DefinitionExpression definition)
+            {
+                let.Definition = definition;
+            } else
+            {
+                return null;
+            }
+
+            return let;
+        }
+        private ReturnStatement parseReturnStatement()
+        {
+            NextToken();
+            ReturnStatement returnStmt = new ReturnStatement();
+            returnStmt.Value = parseExpression(Priority.Lowest);
+            return returnStmt;
+        }
+        private Expression parseFunctionLiteral()
+        {
+            FunctionLiteral function = new FunctionLiteral();
+            NextToken();
+
+
+            // parse function name
+            if (parseIdentifierExpression() is IdentifierExpression functionName)
+            {
+                function.FunctionName = functionName;
+                NextToken();
+            } else
+            {
+                function.Anonymous = true;
+            }
+
+            // parse function parameters
+            if (current.Type != Token.TokenType.LeftParen)
+            {
+                return null;
+            }
+            function.Parameters = parseFunctionParameters();
+
+            // parse function return type
+            if (peek.Type == Token.TokenType.LeftBrace)
+            {
+                function.ReturnType = Expression.Void;
+                NextToken();
+            } else if (peek.Type == Token.TokenType.Colon)
+            {
+                NextToken();
+                NextToken();
+                if (parseExpression(Priority.Lowest) is TextExpression type)
                 {
-                    lexer.GetNextToken();
+                    function.ReturnType = type;
                 }
             }
-            return expressions.ToArray();
-        }
-        private Expression ParsePrefixDefault()
-        {
-            PrefixExpression prefixExpression = new PrefixExpression();
-            prefixExpression.Token = current;
-            lexer.GetNextToken();
-            prefixExpression.Expression = ParseExpression(Priority.Prefix);
-            return prefixExpression;
-        }
-        private Expression ParsePrefixExpression()
-        {
-            switch (current.Type)
+            NextToken();
+
+            // parse function body
+            if (parseBlockStatement() is BlockStatement block)
             {
-                case Token.TokenType.IDENTIFER:
-                    {
-                        return new IdentifierExpression(current, current.Literal);
-                    }
-                case Token.TokenType.PLUS:
-                    {
-                        return ParsePrefixDefault();
-                    }
-                case Token.TokenType.MINUS:
-                    {
-                        return ParsePrefixDefault();
-                    }
-                case Token.TokenType.STRING:
-                    {
-                        return new StringExpression(current, current.Literal);
-                    }
-                case Token.TokenType.INTERNAL:
-                    {
-                        return new InternalCode(current, current.Literal);
-                    }
-                case Token.TokenType.TRUE:
-                    {
-                        return new IdentifierExpression(current, current.Literal);
-                    }
-                case Token.TokenType.FALSE:
-                    {
-                        return new IdentifierExpression(current, current.Literal);
-                    }
+                function.Body = block;
+            }
+            return function;
+        }
+        private List<DefinitionExpression> parseFunctionParameters()
+        {
+            List<DefinitionExpression> result = new List<DefinitionExpression>();
+            if (peek.Type == Token.TokenType.RightParen)
+            {
+                NextToken();
+                return result;
             }
 
-            return null;
+            do
+            {
+                NextToken();
+                if (parseExpression(Priority.Lowest) is DefinitionExpression param)
+                {
+                    result.Add(param);
+                    NextToken();
+                } else
+                {
+                    return null;
+                }
+            } while (current.Type != Token.TokenType.RightParen);
+            return result;
+        }
+
+        private BlockStatement parseBlockStatement()
+        {
+            if (current.Type != Token.TokenType.LeftBrace)
+            {
+                return null;
+            }
+            BlockStatement block = new BlockStatement();
+            while (peek.Type != Token.TokenType.RightBrace)
+            {
+                NextToken();
+                block.Body.Add(parseStatement());
+
+                if (peek.Type != Token.TokenType.Semicolon && current.Type != Token.TokenType.RightBrace)
+                {
+                    return null;
+                } else if (peek.Type == Token.TokenType.Semicolon)
+                {
+                    NextToken();
+                }
+            }
+            NextToken();
+            return block;
+        }
+
+        private ExpressionStatement parseExpressionStatement()
+        {
+            Expression expression = parseExpression(Priority.Lowest);
+            if (current.Type != Token.TokenType.RightBrace && peek.Type != Token.TokenType.Semicolon)
+            {
+                return null;
+            }
+            return new ExpressionStatement(expression);
+        }
+        private Expression parseExpression(Priority priority)
+        {
+            Func<Expression> prefixFunc = getPrefixParserFunction(current.Type);
+            if (prefixFunc == null)
+            {
+                return null;
+            }
+            Expression left = prefixFunc();
+
+            while (peek.Type != Token.TokenType.Semicolon
+                   && priority <= QueryPriority(peek.Type))
+            {
+                Func<Expression, Expression> infixFunc = getInfixParserFunction(peek.Type);
+                if (infixFunc == null)
+                {
+                    return left;
+                }
+                NextToken();
+                left = infixFunc(left);
+
+            }
+
+            return left;
+        }
+        private IdentifierExpression parseIdentifierExpression()
+        {
+            if (current.Type != Token.TokenType.Identifier)
+            {
+                return null;
+            }
+            return new IdentifierExpression(current, current.Literal);
+        }
+        private NumberLiteral parseNumberExpression()
+        {
+            if (current.Type != Token.TokenType.Number)
+            {
+                return null;
+            }
+            return new NumberLiteral(current, current.Literal);
+        }
+        private PathExpression parsePathExpression(Expression left)
+        {
+            PathExpression path;
+            if (left is PathExpression leftPath)
+            {
+                path = leftPath;
+            } else
+            {
+                path = new PathExpression();
+                path.Path.Add(left);
+            }
+            NextToken();
+            path.Path.Add(parseExpression(Priority.Index));
+            return path;
+        }
+        private IfExpression parseIfExpression()
+        {
+            IfExpression ifexpr = new IfExpression();
+            NextToken();
+            ifexpr.Condition = parseExpression(Priority.Lowest);
+            if (peek.Type != Token.TokenType.LeftBrace)
+            {
+                return null;
+            }
+            NextToken();
+            ifexpr.Consequence = parseBlockStatement();
+
+            return ifexpr;
+        }
+        private WhileExpression parseWhileExpression()
+        {
+            WhileExpression whileexpr = new WhileExpression();
+            NextToken();
+            whileexpr.Condition = parseExpression(Priority.Lowest);
+            if (peek.Type != Token.TokenType.LeftBrace)
+            {
+                return null;
+            }
+            NextToken();
+            whileexpr.Consequence = parseBlockStatement();
+            return whileexpr;
+        }
+        private LoopExpression parseLoopExpression()
+        {
+            LoopExpression loopexpr = new LoopExpression();
+            if (peek.Type != Token.TokenType.LeftBrace)
+            {
+                return null;
+            }
+            NextToken();
+            loopexpr.Process = parseBlockStatement();
+            return loopexpr;
+        }
+        private PrefixExpression parsePrefixExpression()
+        {
+            PrefixExpression prefix = new PrefixExpression();
+            prefix.Token = current;
+            NextToken();
+            prefix.Expression = parseExpression(Priority.Prefix);
+            return prefix;
+        }
+        private InfixExpression parseInfixExpression(Expression left)
+        {
+            InfixExpression infix = new InfixExpression();
+            infix.Left = left;
+            infix.Operator = current;
+            NextToken();
+            infix.Right = parseExpression(QueryPriority(infix.Operator));
+            return infix;
+        }
+        private CallExpression parseCallExpression(Expression left)
+        {
+            CallExpression call = new CallExpression();
+            call.Function = left;
+            call.Parameters = parseCallParameters();
+            return call;
+        }
+        private List<Expression> parseCallParameters()
+        {
+            List<Expression> result = new List<Expression>();
+            while (current.Type != Token.TokenType.RightParen)
+            {
+                NextToken();
+                if (parseExpression(Priority.Lowest) is Expression param)
+                {
+                    result.Add(param);
+                    if (peek.Type is not Token.TokenType.Comma and not Token.TokenType.RightParen)
+                    {
+                        return null;
+                    }
+                    NextToken();
+                }
+                else
+                {
+                    return null;
+                }
+            }
+            return result;
+        }
+        private DefinitionExpression parseDefinitionExpression(Expression left)
+        {
+            DefinitionExpression definition = new DefinitionExpression();
+            if (left is IdentifierExpression Name)
+            {
+                definition.Name = Name;
+            } else
+            {
+                return null;
+            }
+
+            NextToken();
+            if (parseExpression(Priority.Lowest) is TextExpression type)
+            {
+                definition.ObjType = type;
+            }
+            else
+            {
+                return null;
+            }
+            // parse value
+            if (peek.Type == Token.TokenType.Assign)
+            {
+                NextToken();
+                NextToken();
+                Expression value = parseExpression(Priority.Lowest);
+                if (value == null)
+                {
+                    return null;
+                }
+                else
+                {
+                    definition.Value = value;
+                }
+            }
+            return definition;
         }
     }
 }
