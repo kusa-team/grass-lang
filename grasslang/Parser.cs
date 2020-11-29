@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace grasslang
 {
-    public class AstParser
+    public class Parser
     {
         public enum Priority
         {
@@ -43,7 +43,7 @@ namespace grasslang
             }
             return Priority.Lowest;
         }
-        public LexerInterface Lexer = null;
+        public Lexer Lexer = null;
 
         private Token current
         {

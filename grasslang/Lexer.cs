@@ -83,7 +83,7 @@ namespace grasslang
         public TokenType Type;
         public string Literal;
     }
-    public class Lexer : LexerInterface
+    public class Lexer
     {
         private string code = null;
         private int pos = -1; 
