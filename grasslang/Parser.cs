@@ -386,6 +386,11 @@ namespace grasslang
         private List<Expression> parseCallParameters()
         {
             List<Expression> result = new List<Expression>();
+            if(peek.Type == Token.TokenType.RightParen)
+            {
+                NextToken();
+                return result;
+            }
             while (current.Type != Token.TokenType.RightParen)
             {
                 NextToken();

@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using grasslang.Script;
 
 namespace grasslang
@@ -12,10 +13,25 @@ namespace grasslang
             argument.AddValue("project", new string[] { "-p", "--project" }, "");
             argument.Parse();
 
-            if((string)argument["project"] is { Length: >0 })
+            if((string)argument["project"] is { Length: >0 } projectfile)
             {
+                Context context = new Context();
+                Parser parser = new Parser();
+                parser.Lexer = new Lexer(File.ReadAllText(projectfile));
+                parser.InitParser();
+                Ast ast = parser.BuildAst();
+                context.Scopes.Peek().Children["TestWrite"]
+                    = new DotnetMethod(new Functions(), "TestWrite");
+                context.Eval(ast);
                 return;
             }
+        }
+    }
+    class Functions
+    {
+        public void TestWrite()
+        {
+            Console.WriteLine("Call in Context!");
         }
     }
 }
