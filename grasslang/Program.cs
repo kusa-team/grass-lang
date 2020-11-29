@@ -10,9 +10,13 @@ namespace grasslang
         static void Main(string[] args)
         {
             ArgumentParser argument = new ArgumentParser(args);
-            argument.AddValue("project", new string[] { "-p", "--project" }, "");
+            argument.AddValue("project", new string[] { "-p", "--project" });
+            argument.AddSwitch("version", new string[] { "-v", "--version" });
             argument.Parse();
-
+            if(argument["version"] is true)
+            {
+                Console.WriteLine("Grasslang debug 0.21.");
+            }
             if((string)argument["project"] is { Length: >0 } projectfile)
             {
                 Context context = new Context();
