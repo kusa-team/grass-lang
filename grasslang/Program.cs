@@ -1,5 +1,7 @@
 ﻿using System;
 using System.IO;
+using System.Threading;
+using System.Collections.Generic;
 using grasslang.Script;
 
 namespace grasslang
@@ -24,18 +26,40 @@ namespace grasslang
                 parser.Lexer = new Lexer(File.ReadAllText(projectfile));
                 parser.InitParser();
                 Ast ast = parser.BuildAst();
+
+                Functions injectFunction = new Functions();
                 context.Scopes.Peek().Children["TestWrite"]
-                    = new DotnetMethod(new Functions(), "TestWrite");
+                    = new DotnetMethod(injectFunction, "TestWrite");
+                context.Scopes.Peek().Children["Write"]
+                    = new DotnetMethod(injectFunction, "Write");
+                context.Scopes.Peek().Children["Sleep"]
+                    = new DotnetMethod(injectFunction, "Sleep");
+                context.Scopes.Peek().Children["Clear"]
+                    = new DotnetMethod(injectFunction, "Clear");
+
                 context.Eval(ast);
+                context.Eval(new CallExpression()
+                {
+                    Function = new IdentifierExpression(null, "main"),
+                    Parameters = new List<Expression>()
+                });
                 return;
             }
         }
     }
     class Functions
     {
-        public void TestWrite()
+        public void Write(string text)
         {
-            Console.WriteLine("Call in Context!");
+            Console.WriteLine(text);
+        }
+        public void Clear()
+        {
+            Console.Clear();
+        }
+        public void Sleep(int time)
+        {
+            Thread.Sleep(time);
         }
     }
 }

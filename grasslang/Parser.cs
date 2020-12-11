@@ -102,6 +102,7 @@ namespace grasslang
             // prefix
             prefixParserMap[Token.TokenType.Function] = parseFunctionLiteral;
             prefixParserMap[Token.TokenType.Identifier] = parseIdentifierExpression;
+            prefixParserMap[Token.TokenType.String] = parseStringExpression;
             prefixParserMap[Token.TokenType.Number] = parseNumberExpression;
             prefixParserMap[Token.TokenType.If] = parseIfExpression;
             prefixParserMap[Token.TokenType.While] = parseWhileExpression;
@@ -190,7 +191,6 @@ namespace grasslang
             if (peek.Type == Token.TokenType.LeftBrace)
             {
                 function.ReturnType = Expression.Void;
-                NextToken();
             } else if (peek.Type == Token.TokenType.Colon)
             {
                 NextToken();
@@ -297,6 +297,14 @@ namespace grasslang
                 return null;
             }
             return new IdentifierExpression(current, current.Literal);
+        }
+        private StringLiteral parseStringExpression()
+        {
+            if (current.Type != Token.TokenType.String)
+            {
+                return null;
+            }
+            return new StringLiteral(current, current.Literal);
         }
         private NumberLiteral parseNumberExpression()
         {

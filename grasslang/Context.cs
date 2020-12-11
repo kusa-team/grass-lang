@@ -54,6 +54,18 @@ namespace grasslang.Script
                 Function function = new Function() { Context = this };
                 function.Block = functionLiteral.Body;
                 Scopes.Peek().Children[functionLiteral.FunctionName.Literal] = function;
+            } else if (node is StringLiteral stringLiteral)
+            {
+                return new StringObject()
+                {
+                    Literal = stringLiteral.Value
+                };
+            } else if (node is NumberLiteral numberLiteral)
+            {
+                return new NumberObject()
+                {
+                    Literal = int.Parse(numberLiteral.Value)
+                };
             }
             return null;
         }
@@ -96,6 +108,25 @@ namespace grasslang.Script
             return Context.Eval(Block);
         }
     }
+
+    public class StringObject : Object
+    {
+        public string Literal = "";
+        public override object toDotnetObject()
+        {
+            return Literal;
+        }
+    }
+    public class NumberObject : Object
+    {
+        public int Literal = 0;
+        public override object toDotnetObject()
+        {
+            return Literal;
+        }
+    }
+
+
     public class DotnetMethod : Callable
     {
         private MethodInfo method;
@@ -105,9 +136,14 @@ namespace grasslang.Script
             method = obj.GetType().GetMethod(methodname);
             instance = obj;
         }
-        public override Object Invoke(List<Object> param)
+        public override Object Invoke(List<Object> callParams)
         {
-            method.Invoke(instance, param.ToArray());
+            List<object> dotnetParams = new List<object>();
+            foreach(Object param in callParams)
+            {
+                dotnetParams.Add(param.toDotnetObject());
+            }
+            method.Invoke(instance, dotnetParams.ToArray());
             return null;
         }
     }
