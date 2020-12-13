@@ -124,6 +124,7 @@ namespace grasslang
             infixParserMap[Token.TokenType.NotEqual] = parseInfixExpression;
 
             infixParserMap[Token.TokenType.LeftParen] = parseCallExpression;
+            infixParserMap[Token.TokenType.Assign] = parseAssignExpression;
         }
 
 
@@ -390,6 +391,15 @@ namespace grasslang
             call.Function = left;
             call.Parameters = parseCallParameters();
             return call;
+        }
+        private AssignExpression parseAssignExpression(Expression left)
+        {
+            AssignExpression assign = new AssignExpression();
+            assign.Left = left as TextExpression;
+            NextToken();
+            assign.Right = parseExpression(Priority.Assign);
+
+            return assign;
         }
         private List<Expression> parseCallParameters()
         {
