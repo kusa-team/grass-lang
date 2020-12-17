@@ -388,7 +388,13 @@ namespace grasslang
         private CallExpression parseCallExpression(Expression left)
         {
             CallExpression call = new CallExpression();
-            call.Function = left;
+            if(left is IdentifierExpression name)
+            {
+                call.Function = name;
+            } else
+            {
+                throw new Exception("The name of the function is somewhat incorrect.");
+            }
             call.Parameters = parseCallParameters();
             return call;
         }
@@ -440,7 +446,7 @@ namespace grasslang
             }
 
             NextToken();
-            if (parseExpression(Priority.Lowest) is TextExpression type)
+            if (parseExpression(Priority.Equals) is TextExpression type)
             {
                 definition.ObjType = type;
             }

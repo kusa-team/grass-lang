@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 using grasslang.Script;
-using grasslang.Compile;
+using grasslang.Script.DotnetType;
 namespace grasslang
 {
     
@@ -25,15 +25,13 @@ namespace grasslang
         }
         private static void parseProject(string projectfile)
         {
-            Context context = new Context();
+            Engine engine = new Engine();
             Parser parser = new Parser();
             parser.Lexer = new Lexer(File.ReadAllText(projectfile));
             parser.InitParser();
             Ast ast = parser.BuildAst();
-            Project project = new Project();
-            context["Project"] = new DotnetObject(project);
-            context["System"] = new DotnetObject(new DotnetHelper());
-            context.Eval(ast);
+            engine.RootContext["Out"] = new DotnetObject(Console.Out);
+            engine.Eval(ast);
         }
     }
 }

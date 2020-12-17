@@ -104,6 +104,16 @@ namespace grasslang
     public class PathExpression : TextExpression
     {
         public List<Expression> Path = new List<Expression>();
+
+        // 生成新的PathExpression并剪裁其Path属性
+        public PathExpression SubPath(int start)
+        {
+            PathExpression nextPathExpression = this;
+            List<Expression> nextPath = nextPathExpression.Path;
+            nextPath = nextPath.GetRange(start, nextPath.Count - start);
+            nextPathExpression.Path = nextPath;
+            return nextPathExpression;
+        }
     }
     [DebuggerDisplay("IdentifierExpression = \"{Literal}\"")]
     public class IdentifierExpression : TextExpression
@@ -120,7 +130,7 @@ namespace grasslang
     [DebuggerDisplay("CallExpression = \"{FunctionName.Literal}\"")]
     public class CallExpression : Expression
     {
-        public Expression Function;
+        public IdentifierExpression Function;
         public List<Expression> Parameters;
     }
 
