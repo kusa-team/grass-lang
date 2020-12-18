@@ -1,17 +1,21 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 namespace grasslang
 {
     public class Ast
     {
         public List<Node> Root = new List<Node>();
     }
-
-    public class Node
+    public class Node : ICloneable
     {
         public string Type = "";
+        public object Clone()
+        {
+            return MemberwiseClone();
+        }
     }
 
     public class Statement : Node
@@ -108,7 +112,7 @@ namespace grasslang
         // 生成新的PathExpression并剪裁其Path属性
         public PathExpression SubPath(int start)
         {
-            PathExpression nextPathExpression = this;
+            PathExpression nextPathExpression = Clone() as PathExpression;
             List<Expression> nextPath = nextPathExpression.Path;
             nextPath = nextPath.GetRange(start, nextPath.Count - start);
             nextPathExpression.Path = nextPath;

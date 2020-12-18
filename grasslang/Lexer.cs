@@ -216,7 +216,7 @@ namespace grasslang
 
         public static bool IsStopFlag(char ch)
         {
-            return IsWhitespace(ch) || "=!+-*/<>,;{}()[].".IndexOf(ch) != -1 || ch == '\x00';
+            return IsWhitespace(ch) || "=!+-*/<>,;:{}()[].".IndexOf(ch) != -1 || ch == '\x00';
         }
         private void SkipWhitespace()
         {

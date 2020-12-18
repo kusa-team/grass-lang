@@ -5,7 +5,7 @@ namespace grasslang.Script
     public class Engine
     {
         public Scope RootContext = new Scope();
-        public Scope ExecutionContext;
+        public Stack<Scope> ExecutionContext = new Stack<Scope>();
         private void evalLetStatement(Object context, LetStatement statement)
         {
             DefinitionExpression definition = statement.Definition;
@@ -47,16 +47,16 @@ namespace grasslang.Script
         }
         private Object evalCallExpression(Object context, CallExpression call)
         {
-            Object result = null;
+            Object result;
             string name = call.Function.Literal;
             if (context[name] is Callable target)
             {
                 List<Object> callParams = new List<Object>();
                 foreach(Expression param in call.Parameters)
                 {
-                    callParams.Add(Eval(ExecutionContext, param));
+                    callParams.Add(Eval(ExecutionContext.Peek(), param));
                 }
-                target.Invoke(callParams);
+                result = target.Invoke(callParams);
             } else
             {
                 throw new System.Exception("The object named \'" +
@@ -102,6 +102,9 @@ namespace grasslang.Script
                         nextContext = Eval(context, fristPath);
                     }
                     result = Eval(nextContext, pathExpression.SubPath(1));
+                } else
+                {
+                    result = context;
                 }
             }
             else if (node is CallExpression callExpression)
@@ -129,7 +132,7 @@ namespace grasslang.Script
         }
         public Engine()
         {
-            ExecutionContext = RootContext;
+            ExecutionContext.Push(RootContext);
         }
     }
 

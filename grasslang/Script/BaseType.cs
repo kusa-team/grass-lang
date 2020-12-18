@@ -38,7 +38,10 @@ namespace grasslang.Script.BaseType
                 functionScope[definition.Name.Literal] = param;
                 index++;
             }
-            return Engine.Eval(functionScope, Block);
+            Engine.ExecutionContext.Push(functionScope);
+            Object result = Engine.Eval(functionScope, Block);
+            Engine.ExecutionContext.Pop();
+            return result;
         }
     }
 }
