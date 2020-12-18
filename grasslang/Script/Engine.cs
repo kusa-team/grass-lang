@@ -64,6 +64,33 @@ namespace grasslang.Script
             }
             return result;
         }
+        private Object evalAssignExpression(Object context, AssignExpression expression)
+        {
+            // 取得父对象和键
+            TextExpression text = expression.Left;
+            Object parentContext = null;
+            IdentifierExpression key = null;
+            if (text is PathExpression path)
+            {
+                parentContext = Eval(context, path.SubPath(0, path.Length - 1));
+                if(path.SubPath(path.Length - 1).Path[0]
+                    is IdentifierExpression identifier)
+                {
+                    key = identifier;
+                } else
+                {
+                    throw new System.Exception("You can only assign it to a key.");
+                }
+            } else if (text is IdentifierExpression identifier)
+            {
+                parentContext = context;
+                key = identifier;
+            }
+            // 取得右值
+            Object value = Eval(context, expression.Right);
+            parentContext[key.Literal] = value;
+            return value;
+        }
         public Object Eval(Object context, Node node)
         {
             Object result = null;
@@ -114,6 +141,10 @@ namespace grasslang.Script
             else if (node is IdentifierExpression identifierExpression)
             {
                 result = context[identifierExpression.Literal];
+            }
+            else if (node is AssignExpression assignExpression)
+            {
+                result = evalAssignExpression(context, assignExpression);
             }
             return result;
         }
@@ -167,7 +198,6 @@ namespace grasslang.Script
     }
     public class Scope : Object
     {
-        
         public override Object findItem(string key)
         {
             if (Items.ContainsKey(key))

@@ -287,6 +287,7 @@ namespace grasslang
                             while(NextChar() != '\n') { }
                             NextChar();
                             tok = GetNextToken();
+                            pos--;
                         }
                         else
                         {

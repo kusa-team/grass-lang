@@ -69,6 +69,10 @@ namespace grasslang
             NextToken();
             while (Lexer.PeekToken().Type != Token.TokenType.Eof)
             {
+                if(current.Type == Token.TokenType.Semicolon)
+                {
+                    NextToken();
+                }
                 Statement statement = parseStatement();
                 if (statement != null)
                 {

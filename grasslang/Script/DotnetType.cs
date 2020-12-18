@@ -14,6 +14,9 @@ namespace grasslang.Script.DotnetType
                     Value = string_obj,
                     Engine = engine
                 };
+            } else if (obj is Object script_obj)
+            {
+                return script_obj;
             }
             return new DotnetObject(obj)
             {
@@ -69,6 +72,25 @@ namespace grasslang.Script.DotnetType
                 }
             }
             return base.findItem(key);
+        }
+        public override void setItem(string key, Object value)
+        {
+            if (GetMember(key) is MemberInfo member)
+            {
+                MemberTypes type = member.MemberType;
+                if (type == MemberTypes.Method)
+                {
+                    throw new System.Exception("You can't assign it to a function.");
+                }
+                else if (type == MemberTypes.Field)
+                {
+                    Type.GetField(key).SetValue(Target, DotnetObject.toObject(value));
+                }
+            }
+            else
+            {
+                base.setItem(key, value);
+            }
         }
     }
 

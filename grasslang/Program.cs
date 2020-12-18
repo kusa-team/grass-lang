@@ -2,6 +2,7 @@
 using System.IO;
 using grasslang.Script;
 using grasslang.Script.DotnetType;
+using grasslang.Compile;
 namespace grasslang
 {
     
@@ -17,7 +18,7 @@ namespace grasslang
             {
                 Console.WriteLine("Grasslang debug 0.21.");
             }
-            if((string)argument["project"] is { Length: >0 } projectfile)
+            if(argument["project"] is string and { Length: >0 } projectfile)
             {
                 parseProject(projectfile);
                 return;
@@ -31,6 +32,11 @@ namespace grasslang
             parser.InitParser();
             Ast ast = parser.BuildAst();
             engine.RootContext["Out"] = new DotnetObject(Console.Out);
+            engine.RootContext["System"]
+                = new DotnetObject(new DotnetHelper(engine));
+            Project project = new Project();
+            engine.RootContext["Project"]
+                = new DotnetObject(project);
             engine.Eval(ast);
         }
     }

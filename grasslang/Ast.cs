@@ -110,13 +110,24 @@ namespace grasslang
         public List<Expression> Path = new List<Expression>();
 
         // 生成新的PathExpression并剪裁其Path属性
-        public PathExpression SubPath(int start)
+        public PathExpression SubPath(int start, int length = -1)
         {
             PathExpression nextPathExpression = Clone() as PathExpression;
             List<Expression> nextPath = nextPathExpression.Path;
-            nextPath = nextPath.GetRange(start, nextPath.Count - start);
+            if(length == -1)
+            {
+                length = nextPath.Count - start;
+            }
+            nextPath = nextPath.GetRange(start, length);
             nextPathExpression.Path = nextPath;
             return nextPathExpression;
+        }
+        public int Length
+        {
+            get
+            {
+                return Path.Count;
+            }
         }
     }
     [DebuggerDisplay("IdentifierExpression = \"{Literal}\"")]
