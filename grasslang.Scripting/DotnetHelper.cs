@@ -1,5 +1,5 @@
-﻿using grasslang.Script.BaseType;
-namespace grasslang.Script
+﻿using grasslang.Scripting.BaseType;
+namespace grasslang.Scripting
 {
     public class DotnetHelper
     {
@@ -12,6 +12,13 @@ namespace grasslang.Script
         public Object CreateObject()
         {
             return new Object()
+            {
+                Engine = engine
+            };
+        }
+        public Scope CreateScope()
+        {
+            return new Scope()
             {
                 Engine = engine
             };

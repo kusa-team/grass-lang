@@ -1,7 +1,8 @@
 ﻿using System;
 using System.IO;
-using grasslang.Script;
-using grasslang.Script.DotnetType;
+using grasslang.Scripting;
+using grasslang.Scripting.DotnetType;
+using grasslang.CodeModel;
 using grasslang.Compile;
 namespace grasslang
 {
@@ -16,7 +17,7 @@ namespace grasslang
             argument.Parse();
             if(argument["version"] is true)
             {
-                Console.WriteLine("Grasslang debug 0.21.");
+                Console.WriteLine("Grasslang debug 0.22.");
             }
             if(argument["project"] is string and { Length: >0 } projectfile)
             {
@@ -31,9 +32,10 @@ namespace grasslang
             parser.Lexer = new Lexer(File.ReadAllText(projectfile));
             parser.InitParser();
             Ast ast = parser.BuildAst();
-            engine.RootContext["Out"] = new DotnetObject(Console.Out);
             engine.RootContext["System"]
                 = new DotnetObject(new DotnetHelper(engine));
+            engine.RootContext["System"]["Out"] = new DotnetObject(Console.Out);
+            engine.RootContext["System"]["Error"] = new DotnetObject(Console.Error);
             Project project = new Project();
             engine.RootContext["Project"]
                 = new DotnetObject(project);

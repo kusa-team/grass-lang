@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
-using grasslang.Script.BaseType;
-namespace grasslang.Script
+using grasslang.Scripting.BaseType;
+using grasslang.Scripting.DotnetType;
+using grasslang.CodeModel;
+namespace grasslang.Scripting
 {
     public class Engine
     {
@@ -13,9 +15,8 @@ namespace grasslang.Script
         }
         private Object evalStringLiteral(Object context, StringLiteral stringLiteral)
         {
-            return new String()
+            return new String(stringLiteral.Value)
             {
-                Value = stringLiteral.Value,
                 Parent = context,
                 Engine = this
             };
@@ -29,7 +30,7 @@ namespace grasslang.Script
                 Block = functionLiteral.Body,
                 Parameters = functionLiteral.Parameters
             };
-            if(!functionLiteral.Anonymous)
+            if (!functionLiteral.Anonymous)
             {
                 string functionName = functionLiteral.FunctionName.Literal;
                 context[functionName] = function;
@@ -52,17 +53,63 @@ namespace grasslang.Script
             if (context[name] is Callable target)
             {
                 List<Object> callParams = new List<Object>();
-                foreach(Expression param in call.Parameters)
+                foreach (Expression param in call.Parameters)
                 {
                     callParams.Add(Eval(ExecutionContext.Peek(), param));
                 }
                 result = target.Invoke(callParams);
-            } else
+            }
+            else
             {
                 throw new System.Exception("The object named \'" +
                     name + "\' is not a function.");
             }
             return result;
+        }
+        private Object evalNewExpression(Object context, NewExpression expression)
+        {
+            CallExpression ctorCallExp;
+            Prototype prototype;
+            if (expression.ctorCall is CallExpression ctorCall)
+            {
+                string typeName = ctorCall.Function.Literal;
+                Object prototypeObj = ExecutionContext.Peek()[typeName];
+                if (prototypeObj is not Prototype)
+                {
+                    throw new System.Exception("The object named \"" +
+                        typeName + "\" is not a type");
+                }
+                ctorCallExp = ctorCall;
+                prototype = prototypeObj as Prototype;
+            } else
+            {
+                // is PathExpression
+                PathExpression typePath = expression.ctorCall as PathExpression;
+                List<Expression> path = typePath.Path;
+                Expression pathCall = path[path.Count - 1];
+                if (pathCall is not CallExpression)
+                {
+                    throw new System.Exception("Need a type");
+                }
+                // get the parent of prototype
+                PathExpression parentPath = typePath.SubPath(0, -1);
+                Object parent = Eval(ExecutionContext.Peek(), parentPath);
+                ctorCallExp = pathCall as CallExpression;
+                if (parent[ctorCallExp.Function.Literal] is Prototype prototypeTarget)
+                {
+                    prototype = prototypeTarget;
+                } else
+                {
+                    throw new System.Exception("Need a type");
+                }
+            }
+            Prototype type = prototype;
+            List<Object> callParams = new List<Object>();
+            foreach (Expression param in ctorCallExp.Parameters)
+            {
+                callParams.Add(Eval(ExecutionContext.Peek(), param));
+            }
+            return type.Create(callParams);
         }
         private Object evalAssignExpression(Object context, AssignExpression expression)
         {
@@ -73,15 +120,17 @@ namespace grasslang.Script
             if (text is PathExpression path)
             {
                 parentContext = Eval(context, path.SubPath(0, path.Length - 1));
-                if(path.SubPath(path.Length - 1).Path[0]
+                if (path.SubPath(path.Length - 1).Path[0]
                     is IdentifierExpression identifier)
                 {
                     key = identifier;
-                } else
+                }
+                else
                 {
                     throw new System.Exception("You can only assign it to a key.");
                 }
-            } else if (text is IdentifierExpression identifier)
+            }
+            else if (text is IdentifierExpression identifier)
             {
                 parentContext = context;
                 key = identifier;
@@ -116,7 +165,7 @@ namespace grasslang.Script
             }
             else if (node is PathExpression pathExpression)
             {
-                if(pathExpression.Path.Count != 0)
+                if (pathExpression.Path.Count != 0)
                 {
                     Expression fristPath = pathExpression.Path[0];
                     Object nextContext;
@@ -129,7 +178,8 @@ namespace grasslang.Script
                         nextContext = Eval(context, fristPath);
                     }
                     result = Eval(nextContext, pathExpression.SubPath(1));
-                } else
+                }
+                else
                 {
                     result = context;
                 }
@@ -145,6 +195,14 @@ namespace grasslang.Script
             else if (node is AssignExpression assignExpression)
             {
                 result = evalAssignExpression(context, assignExpression);
+            }
+            else if (node is BooleanLiteral booleanLiteral)
+            {
+                result = new Bool(booleanLiteral.Value);
+            }
+            else if (node is NewExpression newExpression)
+            {
+                result = evalNewExpression(context, newExpression);
             }
             return result;
         }
@@ -164,6 +222,7 @@ namespace grasslang.Script
         public Engine()
         {
             ExecutionContext.Push(RootContext);
+            RootContext["Clr"] = new DotnetNamespace();
         }
     }
 

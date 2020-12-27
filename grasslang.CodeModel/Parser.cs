@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace grasslang
+namespace grasslang.CodeModel
 {
     public class Parser
     {
@@ -111,6 +111,10 @@ namespace grasslang
             prefixParserMap[Token.TokenType.If] = parseIfExpression;
             prefixParserMap[Token.TokenType.While] = parseWhileExpression;
             prefixParserMap[Token.TokenType.Loop] = parseLoopExpression;
+            prefixParserMap[Token.TokenType.True] = parseBooleanLiteral;
+            prefixParserMap[Token.TokenType.False] = parseBooleanLiteral;
+            prefixParserMap[Token.TokenType.New] = parseNewExpression;
+
 
             prefixParserMap[Token.TokenType.Plus] = parsePrefixExpression;
             prefixParserMap[Token.TokenType.Minus] = parsePrefixExpression;
@@ -131,6 +135,24 @@ namespace grasslang
             infixParserMap[Token.TokenType.Assign] = parseAssignExpression;
         }
 
+        private Expression parseNewExpression()
+        {
+            NewExpression result = new NewExpression();
+            NextToken();
+            Expression protoExpression = parseExpression(Priority.Lowest);
+            if (protoExpression is CallExpression or PathExpression)
+            {
+                result.ctorCall = protoExpression;
+            } else
+            {
+                throw new Exception("Syntax error, new xxx();");
+            }
+            return result;
+        }
+        private Expression parseBooleanLiteral()
+        {
+            return new BooleanLiteral(current.Type == Token.TokenType.True);
+        }
 
         private Statement parseStatement()
         {
@@ -345,7 +367,6 @@ namespace grasslang
             }
             NextToken();
             ifexpr.Consequence = parseBlockStatement();
-
             return ifexpr;
         }
         private WhileExpression parseWhileExpression()
@@ -408,7 +429,6 @@ namespace grasslang
             assign.Left = left as TextExpression;
             NextToken();
             assign.Right = parseExpression(Priority.Assign);
-
             return assign;
         }
         private List<Expression> parseCallParameters()
@@ -448,7 +468,6 @@ namespace grasslang
             {
                 return null;
             }
-
             NextToken();
             if (parseExpression(Priority.Equals) is TextExpression type)
             {

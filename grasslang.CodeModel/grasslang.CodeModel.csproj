@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+    <ProjectGuid>{56D570AF-F9D9-4F68-BA4C-6999ED380C54}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net5</TargetFramework>
+  </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+      <LangVersion>9.0</LangVersion>
+      <WarningLevel>4</WarningLevel>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+      <LangVersion>9.0</LangVersion>
+    </PropertyGroup>
+     <PropertyGroup>
+        <PreserveCompilationContext>true</PreserveCompilationContext>
+    </PropertyGroup>
+</Project>

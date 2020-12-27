@@ -1,9 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
-namespace grasslang
+namespace grasslang.CodeModel
 {
     public class Ast
     {
@@ -64,10 +62,7 @@ namespace grasslang
             Expression = expression;
         }
 
-        public PrefixExpression()
-        {
-            
-        }
+        public PrefixExpression() { }
     }
     
     public class InfixExpression : Expression
@@ -90,8 +85,12 @@ namespace grasslang
 
     public class TextExpression : Expression
     {
-        public string Literal = "";
+        public string Literal;
     }
+
+    /// <summary>
+    /// "xxx" or 'xxx'
+    /// </summary>
     [DebuggerDisplay("StringLiteral = \"{Value}\"")]
     public class StringLiteral : Expression
     {
@@ -104,19 +103,25 @@ namespace grasslang
             Value = value;
         }
     }
+
+    /// <summary>
+    /// xxx.xxx().xxx
+    /// </summary>
     [DebuggerDisplay("PathExpression = \"{Literal}\"")]
     public class PathExpression : TextExpression
     {
         public List<Expression> Path = new List<Expression>();
-
         // 生成新的PathExpression并剪裁其Path属性
-        public PathExpression SubPath(int start, int length = -1)
+        public PathExpression SubPath(int start, int length = 0)
         {
             PathExpression nextPathExpression = Clone() as PathExpression;
             List<Expression> nextPath = nextPathExpression.Path;
-            if(length == -1)
+            if(length == 0)
             {
                 length = nextPath.Count - start;
+            } else if(length < 0)
+            {
+                length = nextPath.Count + length;
             }
             nextPath = nextPath.GetRange(start, length);
             nextPathExpression.Path = nextPath;
@@ -130,6 +135,10 @@ namespace grasslang
             }
         }
     }
+
+    /// <summary>
+    /// identifiers
+    /// </summary>
     [DebuggerDisplay("IdentifierExpression = \"{Literal}\"")]
     public class IdentifierExpression : TextExpression
     {
@@ -140,8 +149,11 @@ namespace grasslang
             Token = token;
             Literal = literal;
         }
-        
     }
+
+    /// <summary>
+    /// foo(bar);
+    /// </summary>
     [DebuggerDisplay("CallExpression = \"{FunctionName.Literal}\"")]
     public class CallExpression : Expression
     {
@@ -150,6 +162,9 @@ namespace grasslang
     }
 
 
+    /// <summary>
+    /// xxx: type = value;
+    /// </summary>
     [DebuggerDisplay("DefinitionExpression = \"{Name.Literal} : {Type.Literal}\"")]
     public class DefinitionExpression : Expression
     {
@@ -167,6 +182,10 @@ namespace grasslang
             this.Value = Value;
         }
     }
+
+    /// <summary>
+    /// let xxx: type = value;
+    /// </summary>
     public class LetStatement : Statement
     {
         public DefinitionExpression Definition;
@@ -180,7 +199,10 @@ namespace grasslang
             this.Definition = Definition;
         }
     }
-    
+
+    /// <summary>
+    /// return Value;
+    /// </summary>
     public class ReturnStatement : Statement
     {
         public Expression Value = null;
@@ -194,6 +216,10 @@ namespace grasslang
             this.Value = value;
         }
     }
+
+    /// <summary>
+    /// fn func(): return type {}
+    /// </summary>
     public class FunctionLiteral : Expression
     {
         public IdentifierExpression FunctionName = null;
@@ -202,16 +228,22 @@ namespace grasslang
         public TextExpression ReturnType;
         public bool Anonymous = false;
     }
+
+    /// <summary>
+    /// xxx = 123
+    /// </summary>
     public class AssignExpression : Expression
     {
         public TextExpression Left;
         public Expression Right;
     }
+
     public class SubscriptExpression : Expression
     {
         public Expression Body;
         public Expression Subscript;
     }
+
     public class InternalCode : Expression
     {
         public Token Token = null;
@@ -223,21 +255,45 @@ namespace grasslang
             Value = value;
         }
     }
+
+    /// <summary>
+    /// if Condition {
+    ///
+    /// } else {
+    ///
+    /// }
+    /// </summary>
     public class IfExpression : Expression
     {
         public Expression Condition;
         public BlockStatement Consequence;
         public BlockStatement Alternative;
     }
+
+    /// <summary>
+    /// while Condition {
+    ///
+    /// }
+    /// </summary>
     public class WhileExpression : Expression
     {
         public Expression Condition;
         public BlockStatement Consequence;
     }
+
+    /// <summary>
+    /// loop {
+    ///
+    /// }
+    /// </summary>
     public class LoopExpression : Expression
     {
         public BlockStatement Process;
     }
+
+    /// <summary>
+    /// some numbers
+    /// </summary>
     [DebuggerDisplay("NumberLiteral = {Value}")]
     public class NumberLiteral : Expression
     {
@@ -249,5 +305,27 @@ namespace grasslang
             Token = token;
             Value = value;
         }
+    }
+
+
+    /// <summary>
+    /// true or false
+    /// </summary>
+    public class BooleanLiteral : Expression
+    {
+        public bool Value = false;
+
+        public BooleanLiteral(bool value)
+        {
+            Value = value;
+        }
+    }
+
+    /// <summary>
+    /// new xxxxx()
+    /// </summary>
+    public class NewExpression : Expression
+    {
+        public Expression ctorCall;
     }
 }

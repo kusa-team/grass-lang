@@ -1,22 +1,81 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
-using grasslang.Script.BaseType;
-namespace grasslang.Script.DotnetType
+using grasslang.Scripting.BaseType;
+using Type = System.Type;
+using Activator = System.Activator;
+namespace grasslang.Scripting.DotnetType
 {
+    public class DotnetNamespace : Object
+    {
+        public string Namespace = "";
+        public static IEnumerable<Type> getClass(string name)
+        {
+            return from assembly in System.AppDomain.CurrentDomain.GetAssemblies()
+                    from type in assembly.GetTypes()
+                    where type.FullName == name
+                    select type;
+        }
+        public static bool isNamespaceExists(string nsname)
+        {
+            return (from assembly in System.AppDomain.CurrentDomain.GetAssemblies()
+                                  from type in assembly.GetTypes()
+                                  where type.Namespace == nsname
+                                  select type).Any();
+        }
+        public override Object findItem(string key)
+        {
+            string newNamespace = Namespace;
+            newNamespace += ((Namespace is { Length: > 0 }) ? "." : "") + key;
+            if(isNamespaceExists(newNamespace))
+            {
+                return new DotnetNamespace
+                {
+                    Namespace = newNamespace
+                };
+            } else if (getClass(newNamespace) is var item)
+            {
+                if(item.Any())
+                {
+                    return new DotnetClass
+                    {
+                        ClassType = new List<Type>(item)[0]
+                    };
+                }
+            }
+
+            throw new System.Exception("Namespace \"" + newNamespace + "\" not found");
+        }
+    }
+    public class DotnetClass : Prototype
+    {
+        public Type ClassType;
+        public override Object Create(List<Object> ctorParams)
+        {
+            object instance = Activator.CreateInstance(ClassType, DotnetObject.toObjects(ctorParams).ToArray());
+            return new DotnetObject(instance);
+        }
+        public override Object findItem(string key)
+        {
+            return base.findItem(key);
+        }
+    }
     public class DotnetObject : Object
     {
         public static Object toScriptObject(Engine engine, object obj)
         {
             if (obj is string string_obj)
             {
-                return new String()
+                return new String(string_obj)
                 {
-                    Value = string_obj,
                     Engine = engine
                 };
             } else if (obj is Object script_obj)
             {
                 return script_obj;
+            } else if (obj is bool boolean)
+            {
+                return new Bool(boolean);
             }
             return new DotnetObject(obj)
             {
@@ -31,11 +90,24 @@ namespace grasslang.Script.DotnetType
             } else if (obj is DotnetObject dotnetObject)
             {
                 return dotnetObject.Target;
+            } else if (obj is Bool boolean)
+            {
+                return boolean.Value;
             }
             return obj;
         }
+        public static List<object> toObjects(List<Object> objs)
+        {
+            List<object> result = new List<object>();
+            foreach (Object param in objs)
+            {
+                object obj = toObject(param);
+                result.Add(obj);
+            }
+            return result;
+        }
         public object Target;
-        public System.Type Type;
+        public Type Type;
         private List<MemberInfo> members;
         public DotnetObject(object target)
         {
@@ -97,7 +169,7 @@ namespace grasslang.Script.DotnetType
     public class DotnetMethod : Callable
     {
         public object Target;
-        public System.Type Type;
+        public Type Type;
         private string methodName;
         public DotnetMethod(object target, string name)
         {
@@ -107,15 +179,14 @@ namespace grasslang.Script.DotnetType
         }
         public override Object Invoke(List<Object> callParams)
         {
-            List<System.Type> types = new List<System.Type>();
-            List<object> targetParams = new List<object>();
-            foreach(Object param in callParams)
+            List<Type> types = new List<Type>();
+            List<object> targetParams = DotnetObject.toObjects(callParams);
+            foreach (var aparam in targetParams)
             {
-                object targetParam = DotnetObject.toObject(param);
-                targetParams.Add(targetParam);
-                types.Add(targetParam.GetType());
+                types.Add(aparam.GetType());
             }
             MethodInfo method = Type.GetMethod(methodName, types.ToArray());
+            
             object result = method.Invoke(Target, targetParams.ToArray());
             if(result is null)
             {

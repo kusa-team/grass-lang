@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 
-namespace grasslang
+namespace grasslang.CodeModel
 {
     [DebuggerDisplay("Token = \"{Literal}\"")]
     public class Token
@@ -53,7 +53,8 @@ namespace grasslang
             Identifier,
             String,
             Number,
-            Internal
+            Internal,
+            New
 
         }
 
@@ -174,6 +175,8 @@ namespace grasslang
             {"for", Token.TokenType.For},
             {"while", Token.TokenType.While},
             {"loop", Token.TokenType.Loop},
+            {"function", Token.TokenType.Function},
+            {"new", Token.TokenType.New},
             {"\n", Token.TokenType.NextLine}
         };
         public static Token.TokenType GetTokenType(string literal)
