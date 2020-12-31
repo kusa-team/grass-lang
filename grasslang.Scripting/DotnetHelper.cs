@@ -1,27 +1,12 @@
-﻿using grasslang.Scripting.BaseType;
-namespace grasslang.Scripting
+﻿using System.Collections.Generic;
+using grasslang.Scripting.BaseType;
+namespace grasslang.Scripting.DotnetType
 {
-    public class DotnetHelper
+    public class ObjectPrototype : Prototype
     {
-        private Engine engine;
-        public DotnetHelper(Engine Engine)
+        public override Object Create(List<Object> ctorParams)
         {
-            engine = Engine;
-        }
-
-        public Object CreateObject()
-        {
-            return new Object()
-            {
-                Engine = engine
-            };
-        }
-        public Scope CreateScope()
-        {
-            return new Scope()
-            {
-                Engine = engine
-            };
+            return new Object();
         }
     }
 }

@@ -173,7 +173,7 @@ namespace grasslang.CodeModel
         {
             NextToken();
             LetStatement let = new LetStatement();
-
+            
             if (parseExpression(Priority.Lowest) is DefinitionExpression definition)
             {
                 let.Definition = definition;

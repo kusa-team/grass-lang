@@ -32,10 +32,6 @@ namespace grasslang
             parser.Lexer = new Lexer(File.ReadAllText(projectfile));
             parser.InitParser();
             Ast ast = parser.BuildAst();
-            engine.RootContext["System"]
-                = new DotnetObject(new DotnetHelper(engine));
-            engine.RootContext["System"]["Out"] = new DotnetObject(Console.Out);
-            engine.RootContext["System"]["Error"] = new DotnetObject(Console.Error);
             Project project = new Project();
             engine.RootContext["Project"]
                 = new DotnetObject(project);

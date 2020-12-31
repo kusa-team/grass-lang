@@ -39,7 +39,7 @@ namespace grasslang.Scripting.DotnetType
                 {
                     return new DotnetClass
                     {
-                        ClassType = new List<Type>(item)[0]
+                        ClassType = item.First()
                     };
                 }
             }
@@ -55,8 +55,48 @@ namespace grasslang.Scripting.DotnetType
             object instance = Activator.CreateInstance(ClassType, DotnetObject.toObjects(ctorParams).ToArray());
             return new DotnetObject(instance);
         }
+        private Object getStaticMember(string key)
+        {
+            var members = ClassType.GetMembers(BindingFlags.Static | BindingFlags.Public);
+            var target = (from member in members
+                          where ((member.MemberType == MemberTypes.Field
+                          || member.MemberType == MemberTypes.Property
+                          || member.MemberType == MemberTypes.Method)
+                          && member.Name == key)
+                          select member);
+            Object result = null;
+            if (target.Any())
+            {
+                MemberInfo memberInfo = target.First();
+                if (memberInfo.MemberType == MemberTypes.Property)
+                {
+                    result = new DotnetObject
+                        ((memberInfo as PropertyInfo).GetValue(null));
+                }
+                else if (memberInfo.MemberType == MemberTypes.Field)
+                {
+                    result = new DotnetObject
+                        ((memberInfo as FieldInfo).GetValue(null));
+                }
+                else
+                {
+                    result = new DotnetMethod
+                    {
+                        Target = null,
+                        Type = ClassType,
+                        methodName = key
+                    };
+                }
+            }
+            return result;
+        }
         public override Object findItem(string key)
         {
+            
+            if(getStaticMember(key) is Object result)
+            {
+                return result;
+            }
             return base.findItem(key);
         }
     }
@@ -170,7 +210,8 @@ namespace grasslang.Scripting.DotnetType
     {
         public object Target;
         public Type Type;
-        private string methodName;
+        public string methodName;
+        public DotnetMethod() { }
         public DotnetMethod(object target, string name)
         {
             Target = target;

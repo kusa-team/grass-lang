@@ -219,10 +219,15 @@ namespace grasslang.Scripting
             }
             return result;
         }
+        private void loadGlobal()
+        {
+            RootContext["Clr"] = new DotnetNamespace();
+            RootContext["Object"] = new ObjectPrototype();
+        }
         public Engine()
         {
             ExecutionContext.Push(RootContext);
-            RootContext["Clr"] = new DotnetNamespace();
+            loadGlobal();
         }
     }
 
