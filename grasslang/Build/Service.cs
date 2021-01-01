@@ -1,9 +1,8 @@
-﻿using grasslang.Build;
-namespace grasslang.Build
+﻿namespace grasslang.Build
 {
     public interface Service
     {
-        public void InstallDependency(Project sourceProject);
+        public void InstallDependency(grasslang.Build.Project sourceProject);
         public bool RunTask(string taskName);
     }
 }
