@@ -43,8 +43,9 @@ namespace grasslang.CodeModel
             }
             return Priority.Lowest;
         }
-        public Lexer Lexer = null;
 
+        // some properties about lexer
+        public Lexer Lexer = null;
         private Token current
         {
             get
@@ -63,6 +64,8 @@ namespace grasslang.CodeModel
         {
             return Lexer.GetNextToken();
         }
+
+        // parse to ast.
         public Ast BuildAst()
         {
             Ast result = new Ast();
@@ -103,6 +106,8 @@ namespace grasslang.CodeModel
         }
         public void InitParser()
         {
+            // add parser functions to map
+
             // prefix
             prefixParserMap[Token.TokenType.Function] = parseFunctionLiteral;
             prefixParserMap[Token.TokenType.Identifier] = parseIdentifierExpression;
@@ -139,6 +144,7 @@ namespace grasslang.CodeModel
         {
             NewExpression result = new NewExpression();
             NextToken();
+            // parse the call of the constructor.
             Expression protoExpression = parseExpression(Priority.Lowest);
             if (protoExpression is CallExpression or PathExpression)
             {
@@ -167,6 +173,7 @@ namespace grasslang.CodeModel
                         return parseReturnStatement();
                     }
             }
+            // parse expression
             return parseExpressionStatement();
         }
         private LetStatement parseLetStatement()
@@ -188,6 +195,7 @@ namespace grasslang.CodeModel
         {
             NextToken();
             ReturnStatement returnStmt = new ReturnStatement();
+            // parse return value.
             returnStmt.Value = parseExpression(Priority.Lowest);
             return returnStmt;
         }
@@ -241,6 +249,7 @@ namespace grasslang.CodeModel
             List<DefinitionExpression> result = new List<DefinitionExpression>();
             if (peek.Type == Token.TokenType.RightParen)
             {
+                // nothing in parameters.
                 NextToken();
                 return result;
             }
@@ -264,9 +273,11 @@ namespace grasslang.CodeModel
         {
             if (current.Type != Token.TokenType.LeftBrace)
             {
+                // check for a flag
                 return null;
             }
             BlockStatement block = new BlockStatement();
+            // parse statements in this block
             while (peek.Type != Token.TokenType.RightBrace)
             {
                 NextToken();
@@ -286,6 +297,7 @@ namespace grasslang.CodeModel
 
         private ExpressionStatement parseExpressionStatement()
         {
+            // parse expression
             Expression expression = parseExpression(Priority.Lowest);
             if (current.Type != Token.TokenType.RightBrace && peek.Type != Token.TokenType.Semicolon)
             {
@@ -295,9 +307,11 @@ namespace grasslang.CodeModel
         }
         private Expression parseExpression(Priority priority)
         {
+            // find parser function in the map named prefixFunc
             Func<Expression> prefixFunc = getPrefixParserFunction(current.Type);
             if (prefixFunc == null)
             {
+                // can't found the result, the syntax has some wrong
                 return null;
             }
             Expression left = prefixFunc();
@@ -305,50 +319,47 @@ namespace grasslang.CodeModel
             while (peek.Type != Token.TokenType.Semicolon
                    && priority <= QueryPriority(peek.Type))
             {
+                // find parser function in the map named infixFunc 
                 Func<Expression, Expression> infixFunc = getInfixParserFunction(peek.Type);
                 if (infixFunc == null)
                 {
+                    // can't found.
                     return left;
                 }
                 NextToken();
                 left = infixFunc(left);
-
             }
-
             return left;
         }
         private IdentifierExpression parseIdentifierExpression()
         {
-            if (current.Type != Token.TokenType.Identifier)
-            {
-                return null;
-            }
-            return new IdentifierExpression(current, current.Literal);
+            // check for flag, and return the result
+            return current.Type != Token.TokenType.Identifier ?
+                null : new IdentifierExpression(current, current.Literal);
         }
         private StringLiteral parseStringExpression()
         {
-            if (current.Type != Token.TokenType.String)
-            {
-                return null;
-            }
-            return new StringLiteral(current, current.Literal);
+            // check for flag, and return the result
+            return current.Type != Token.TokenType.String ?
+                null : new StringLiteral(current, current.Literal);
         }
         private NumberLiteral parseNumberExpression()
         {
-            if (current.Type != Token.TokenType.Number)
-            {
-                return null;
-            }
-            return new NumberLiteral(current, current.Literal);
+            // check for flag, and return the result
+            return current.Type != Token.TokenType.Number ?
+                null : new NumberLiteral(current, current.Literal);
         }
         private PathExpression parsePathExpression(Expression left)
         {
             PathExpression path;
+            // if the type of left is PathExpression
             if (left is PathExpression leftPath)
             {
+                // push to the last of leftPath
                 path = leftPath;
             } else
             {
+                // create a PathExpression
                 path = new PathExpression();
                 path.Path.Add(left);
             }
@@ -360,9 +371,11 @@ namespace grasslang.CodeModel
         {
             IfExpression ifexpr = new IfExpression();
             NextToken();
+            // parse condition
             ifexpr.Condition = parseExpression(Priority.Lowest);
             if (peek.Type != Token.TokenType.LeftBrace)
             {
+                // parse block
                 return null;
             }
             NextToken();
