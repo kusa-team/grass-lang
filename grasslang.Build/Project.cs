@@ -20,7 +20,25 @@ namespace grasslang.Build
         public List<Project> Subprojects = new List<Project>();
         public List<Project> Dependencies = new List<Project>();
         public Project MainProject;
-
+        public string OutputDir {
+            get
+            {
+                string result = "";
+                if (Parent == null)
+                {
+                    result = Path.Combine(Directory.GetCurrentDirectory(), "Build");
+                }
+                else
+                {
+                    result = Path.Combine(Parent.OutputDir, Name);
+                }
+                if (!Directory.Exists(result))
+                {
+                    Directory.CreateDirectory(result);
+                }
+                return result;
+            }
+        }
 
         // load
         public bool Loaded = false;
@@ -132,6 +150,12 @@ namespace grasslang.Build
             // handle subproject dependencies or others
             Loaded = true;
             OnLoaded?.Invoke();
+            // set the output dir for service
+            if (Service != null)
+            {
+                Service.OutputDir = OutputDir;
+                Service.Project = this;
+            }
         }
         public void RunTask(string name)
         {

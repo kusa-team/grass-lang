@@ -19,9 +19,9 @@ namespace grasslang.Scripting.DotnetType
         public static bool isNamespaceExists(string nsname)
         {
             return (from assembly in System.AppDomain.CurrentDomain.GetAssemblies()
-                                  from type in assembly.GetTypes()
-                                  where type.Namespace == nsname
-                                  select type).Any();
+                    from type in assembly.GetTypes()
+                    where type.Namespace == nsname
+                    select type).Any();
         }
         public override Object findItem(string key)
         {

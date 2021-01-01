@@ -11,7 +11,7 @@ namespace grasslang
             ArgumentParser arguments = new ArgumentParser(args);
             // build system
             arguments.AddValue("project", new string[] { "-p", "--project" });
-            arguments.AddValue("tasks", new string[] { "-t", "--tasks" });
+            arguments.AddValue("tasks", new string[] { "-t", "--tasks" }, "build");
             // common
             arguments.AddSwitch("version", new string[] { "-v", "--version" });
             arguments.Parse();

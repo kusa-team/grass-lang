@@ -223,6 +223,7 @@ namespace grasslang.Scripting
         {
             RootContext["Clr"] = new DotnetNamespace();
             RootContext["Object"] = new ObjectPrototype();
+            RootContext["System"] = new DotnetObject(new SystemClass());
         }
         public Engine()
         {
