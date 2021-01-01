@@ -1,9 +1,6 @@
 ﻿using System;
-using System.IO;
-using grasslang.Scripting;
-using grasslang.Scripting.DotnetType;
-using grasslang.CodeModel;
-using grasslang.Compile;
+using System.Linq;
+using grasslang.Build;
 namespace grasslang
 {
     
@@ -11,31 +8,35 @@ namespace grasslang
     {
         static void Main(string[] args)
         {
-            ArgumentParser argument = new ArgumentParser(args);
-            argument.AddValue("project", new string[] { "-p", "--project" });
-            argument.AddSwitch("version", new string[] { "-v", "--version" });
-            argument.Parse();
-            if(argument["version"] is true)
+            ArgumentParser arguments = new ArgumentParser(args);
+            // build system
+            arguments.AddValue("project", new string[] { "-p", "--project" });
+            arguments.AddValue("tasks", new string[] { "-t", "--tasks" });
+            // common
+            arguments.AddSwitch("version", new string[] { "-v", "--version" });
+            arguments.Parse();
+            if(arguments["version"] is true)
             {
                 Console.WriteLine("Grasslang debug 0.22.");
             }
-            if(argument["project"] is string and { Length: >0 } projectfile)
+            if(arguments["project"] is string and { Length: >0 } project)
             {
-                parseProject(projectfile);
+                runProject(project, arguments);
                 return;
             }
         }
-        private static void parseProject(string projectfile)
+        private static void runProject(string projectfile, ArgumentParser arguments)
         {
-            Engine engine = new Engine();
-            Parser parser = new Parser();
-            parser.Lexer = new Lexer(File.ReadAllText(projectfile));
-            parser.InitParser();
-            Ast ast = parser.BuildAst();
-            Project project = new Project();
-            engine.RootContext["Project"]
-                = new DotnetObject(project);
-            engine.Eval(ast);
+            // root project
+            Project rootProject = new Project();
+            rootProject.LoadProject(projectfile);
+
+            // run tasks
+            foreach(string task in (from task in (arguments["tasks"] as string).Split(',')
+                                    select task.Trim()))
+            {
+                rootProject.RunTask(task);
+            }
         }
     }
 }

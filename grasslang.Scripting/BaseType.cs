@@ -47,10 +47,11 @@ namespace grasslang.Scripting.BaseType
                 Parent = Parent
             };
             int index = 0;
-            foreach(DefinitionExpression definition in Parameters)
+            
+            foreach (DefinitionExpression definition in Parameters)
             {
                 Object param;
-                if(callParams.Count <= index)
+                if (callParams.Count <= index)
                 {
                     param = null;
                 } else
