@@ -61,22 +61,30 @@ namespace grasslang.Scripting.DotnetType
             var target = (from member in members
                           where ((member.MemberType == MemberTypes.Field
                           || member.MemberType == MemberTypes.Property
-                          || member.MemberType == MemberTypes.Method)
+                          || member.MemberType == MemberTypes.Method
+                          || member.MemberType == MemberTypes.NestedType)
                           && member.Name == key)
                           select member);
             Object result = null;
             if (target.Any())
             {
                 MemberInfo memberInfo = target.First();
-                if (memberInfo.MemberType == MemberTypes.Property)
+                MemberTypes memberTypes = memberInfo.MemberType;
+                if (memberTypes == MemberTypes.Property)
                 {
                     result = new DotnetObject
                         ((memberInfo as PropertyInfo).GetValue(null));
                 }
-                else if (memberInfo.MemberType == MemberTypes.Field)
+                else if (memberTypes == MemberTypes.Field)
                 {
                     result = new DotnetObject
                         ((memberInfo as FieldInfo).GetValue(null));
+                } else if (memberTypes == MemberTypes.NestedType)
+                {
+                    result = new DotnetClass
+                    {
+                        ClassType = memberInfo as Type
+                    };
                 }
                 else
                 {
@@ -102,6 +110,16 @@ namespace grasslang.Scripting.DotnetType
     }
     public class DotnetObject : Object
     {
+        public override bool Same(Object obj)
+        {
+            if(obj is DotnetObject dotnetObject)
+            {
+                return dotnetObject.Target.Equals(Target);
+            } else
+            {
+                return false;
+            }
+        }
         public static Object toScriptObject(Engine engine, object obj)
         {
             if (obj is string string_obj)

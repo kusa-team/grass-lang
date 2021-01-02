@@ -46,6 +46,18 @@ namespace grasslang.Scripting
             }
             return result;
         }
+        private Object evalWithScope(Object context, BlockStatement block)
+        {
+            Scope scope = new Scope()
+            {
+                Engine = this,
+                Parent = context
+            };
+            ExecutionContext.Push(scope);
+            Object result = Eval(scope, block);
+            ExecutionContext.Pop();
+            return result;
+        }
         private Object evalCallExpression(Object context, CallExpression call)
         {
             Object result;
@@ -140,6 +152,42 @@ namespace grasslang.Scripting
             parentContext[key.Literal] = value;
             return value;
         }
+        private void evalIfExpression(Object context, IfExpression ifExpression)
+        {
+            var condition = Eval(context, ifExpression.Condition);
+            if(condition is Bool succ)
+            {
+                if(succ.Value == true)
+                {
+                    evalWithScope(ExecutionContext.Peek(), ifExpression.Consequence);
+                }
+            } else
+            {
+                throw new System.Exception("Required a bool!");
+            }
+        }
+        private Object evalInfixExpression(InfixExpression infixExpression)
+        {
+            var context = ExecutionContext.Peek();
+            var left = Eval(context, infixExpression.Left);
+            var right = Eval(context, infixExpression.Right);
+            Object result = null;
+            switch (infixExpression.Operator.Type)
+            {
+                case Token.TokenType.Equal:
+                    result = new Bool(left.Same(right));
+                    break;
+                case Token.TokenType.NotEqual:
+                    result = new Bool(!left.Same(right));
+                    break;
+                case Token.TokenType.Plus:
+                    result = left.Add(right);
+                    break;
+
+                default: break;
+            }
+            return result;
+        }
         public Object Eval(Object context, Node node)
         {
             Object result = null;
@@ -204,6 +252,14 @@ namespace grasslang.Scripting
             {
                 result = evalNewExpression(context, newExpression);
             }
+            else if (node is IfExpression ifExpression)
+            {
+                evalIfExpression(context, ifExpression);
+            }
+            else if (node is InfixExpression infixExpression)
+            {
+                result = evalInfixExpression(infixExpression);
+            }
             return result;
         }
         public Object Eval(Node node)
@@ -260,9 +316,32 @@ namespace grasslang.Scripting
         {
             Items[key] = value;
         }
+        public virtual bool Same(Object obj) => obj == this;
+        public virtual Object Add(Object obj) => null;
+        public virtual String GetString() => null;
     }
     public class Scope : Object
     {
+        public override void setItem(string key, Object value)
+        {
+            if(!Items.ContainsKey(key))
+            {
+                if(Parent != null)
+                {
+                    try
+                    {
+                        // find key in parents
+                        Parent.findItem(key);
+                        Parent[key] = value;
+                    }
+                    catch
+                    {
+                        // not found
+                    }
+                }
+            }
+            base.setItem(key, value);
+        }
         public override Object findItem(string key)
         {
             if (Items.ContainsKey(key))

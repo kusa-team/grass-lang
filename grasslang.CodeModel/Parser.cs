@@ -29,7 +29,8 @@ namespace grasslang.CodeModel
             {Token.TokenType.LeftBrack, Priority.Index},
             {Token.TokenType.Identifier, Priority.Prefix },
 
-            {Token.TokenType.Equal, Priority.Equals }
+            {Token.TokenType.Equal, Priority.Equals },
+            {Token.TokenType.Dot, Priority.Equals}
         };
         public static Priority QueryPriority(Token token)
         {

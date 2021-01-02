@@ -18,8 +18,8 @@ namespace grasslang.Services
         /// "executable" or "shared" or "static"
         /// </summary>
         public string Target = "executable";
-        //public List<string> IncludePaths = new List<string>();
-        public List<string> RequireLibraries = new List<string>();
+        public List<string> IncludePaths = new List<string>();
+        public List<string> Libraries = new List<string>();
 
         public string ProjectName
         {
@@ -78,7 +78,7 @@ namespace grasslang.Services
                     throw new Exception("Unsupported target.");
                 }
                 //cppService.IncludePaths.Add(OutputDir);
-                cppService.RequireLibraries.Add(OutputBinary);
+                cppService.Libraries.Add(OutputBinary);
             }
             else
             {
@@ -132,6 +132,15 @@ namespace grasslang.Services
                 CMakeCommands += "set(sources " + sourceFiles + ")\n";
                 // add include path
                 CMakeCommands += "include_directories(" + Project.Parent.OutputDir + ")\n";
+                if(IncludePaths.Any())
+                {
+                    string includePath = "";
+                    IncludePaths.ForEach((path) =>
+                    {
+                        includePath += path + " ";
+                    });
+                    CMakeCommands += "include_directories(" + includePath + ")\n";
+                }
                 // get the build command by target
                 if (Target == "executable")
                 {
@@ -142,10 +151,10 @@ namespace grasslang.Services
                     CMakeCommands += "add_library(" + ProjectName + " " + Target.ToUpper() + " ${sources})\n";
                 }
                 // link libraries
-                if(RequireLibraries.Any())
+                if(Libraries.Any())
                 {
                     string librariesPath = "";
-                    RequireLibraries.ForEach((libraryPath) =>
+                    Libraries.ForEach((libraryPath) =>
                     {
                         librariesPath += libraryPath + " ";
                     });

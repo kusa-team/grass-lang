@@ -18,6 +18,14 @@ namespace grasslang.Scripting.BaseType
         {
             Value = value;
         }
+        public override Object Add(Object obj)
+        {
+            return new String(Value + obj.GetString().Value);
+        }
+        public override String GetString()
+        {
+            return this;
+        }
     }
     public class Bool : Object
     {
@@ -25,6 +33,10 @@ namespace grasslang.Scripting.BaseType
         public Bool(bool value)
         {
             Value = value;
+        }
+        public static implicit operator Bool(bool source)
+        {
+            return new Bool(source);
         }
     }
     public class Callable : Object

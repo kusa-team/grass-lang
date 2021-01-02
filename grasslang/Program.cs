@@ -17,7 +17,7 @@ namespace grasslang
             arguments.Parse();
             if(arguments["version"] is true)
             {
-                Console.WriteLine("Grasslang debug 0.22.");
+                Console.WriteLine("Grasslang debug 0.23.");
             }
             if(arguments["project"] is string and { Length: >0 } project)
             {
