@@ -39,6 +39,7 @@ namespace grasslang.Build
                 return result;
             }
         }
+        public string SourceDir = "";
 
         // load
         public bool Loaded = false;
@@ -139,6 +140,15 @@ namespace grasslang.Build
         }
         public void LoadProject(string path)
         {
+            // set source dir
+            if (Parent != null)
+            {
+                SourceDir = Path.Combine(Parent.SourceDir, Path.GetDirectoryName(path));
+            }
+            else
+            {
+                SourceDir = Directory.GetCurrentDirectory();
+            }
             // parse project
             Parser parser = new Parser
             {
@@ -155,6 +165,7 @@ namespace grasslang.Build
             {
                 Service.OutputDir = OutputDir;
                 Service.Project = this;
+                Service.SourceDir = SourceDir;
             }
         }
         public void RunTask(string name)

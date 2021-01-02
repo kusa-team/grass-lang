@@ -32,8 +32,9 @@ namespace grasslang
             rootProject.LoadProject(projectfile);
 
             // run tasks
-            foreach(string task in (from task in (arguments["tasks"] as string).Split(',')
-                                    select task.Trim()))
+            var tasks = (from task in (arguments["tasks"] as string).Split(',')
+                         select task.Trim());
+            foreach (string task in tasks)
             {
                 rootProject.RunTask(task);
             }
