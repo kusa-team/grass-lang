@@ -10,6 +10,20 @@ namespace grasslang.Build
 {
     public class Project
     {
+        public static void createDirTree(string dirpath)
+        {
+            var tree = dirpath.Replace('\\', '/').Split('/');
+            string dir = Platform.GetPlatform() == Platform.PlatformName.Windows ?
+                "" : "/";
+            foreach (string path in tree)
+            {
+                dir += path + "/";
+                if (!Directory.Exists(dir))
+                {
+                    Directory.CreateDirectory(dir);
+                }
+            }
+        } 
         public Project Parent = null;
         public Engine ScriptEngine = new Engine();
 
@@ -80,7 +94,7 @@ namespace grasslang.Build
                 return;
             }
             // try to use the script to install
-            try
+            if(ScriptEngine.RootContext.Items.ContainsKey("InstallDependency"))
             {
                 // get target
                 Callable callable = ScriptEngine.RootContext["InstallDependency"] as Callable;
@@ -89,7 +103,7 @@ namespace grasslang.Build
                     new DotnetObject(sourceProject)
                 });
             }
-            catch { }
+            
             // not doing anything here...
         }
         public void SetMainProject(string name)
