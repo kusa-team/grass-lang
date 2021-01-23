@@ -47,6 +47,11 @@ namespace grasslang.CodeModel
             For,
             Loop,
             While,
+            Import,
+
+            Class,
+            Public,
+            Static,
 
             NextLine, // 保留，以后可能会用
             Eof,
@@ -165,7 +170,7 @@ namespace grasslang.CodeModel
         }
         public static Dictionary<string, Token.TokenType> KeyworDictionary = new Dictionary<string, Token.TokenType>
         {
-            {"fn", Token.TokenType.Function},
+            {"func", Token.TokenType.Function},
             {"let", Token.TokenType.Let},
             {"true", Token.TokenType.True},
             {"false", Token.TokenType.False},
@@ -175,8 +180,11 @@ namespace grasslang.CodeModel
             {"for", Token.TokenType.For},
             {"while", Token.TokenType.While},
             {"loop", Token.TokenType.Loop},
-            {"function", Token.TokenType.Function},
             {"new", Token.TokenType.New},
+            {"type", Token.TokenType.Class},
+            {"public", Token.TokenType.Public},
+            {"static", Token.TokenType.Static},
+            {"import", Token.TokenType.Import},
             {"\n", Token.TokenType.NextLine}
         };
         public static Token.TokenType GetTokenType(string literal)

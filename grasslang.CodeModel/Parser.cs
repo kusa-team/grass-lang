@@ -125,6 +125,9 @@ namespace grasslang.CodeModel
             prefixParserMap[Token.TokenType.Plus] = parsePrefixExpression;
             prefixParserMap[Token.TokenType.Minus] = parsePrefixExpression;
 
+            prefixParserMap[Token.TokenType.Class] = parseClassLiteral;
+            prefixParserMap[Token.TokenType.Internal] = parseInternalCode;
+
             // infix
             infixParserMap[Token.TokenType.Colon] = parseDefinitionExpression;
             infixParserMap[Token.TokenType.Dot] = parsePathExpression;
@@ -140,7 +143,10 @@ namespace grasslang.CodeModel
             infixParserMap[Token.TokenType.LeftParen] = parseCallExpression;
             infixParserMap[Token.TokenType.Assign] = parseAssignExpression;
         }
-
+        private Expression parseInternalCode()
+        {
+            return new InternalCode(current, current.Literal);
+        }
         private Expression parseNewExpression()
         {
             NewExpression result = new NewExpression();
@@ -173,9 +179,27 @@ namespace grasslang.CodeModel
                     {
                         return parseReturnStatement();
                     }
+                case Token.TokenType.Import:
+                    {
+                        return parseImportStatement();
+                    }
             }
             // parse expression
             return parseExpressionStatement();
+        }
+        private ImportStatement parseImportStatement()
+        {
+            NextToken();
+            ImportStatement import = new ImportStatement();
+            // parse return value.
+            if(parseExpression(Priority.Lowest) is TextExpression textExpression)
+            {
+                import.Target = textExpression;
+            } else
+            {
+                throw null;
+            }
+            return import;
         }
         private LetStatement parseLetStatement()
         {
@@ -406,6 +430,28 @@ namespace grasslang.CodeModel
             NextToken();
             loopexpr.Process = parseBlockStatement();
             return loopexpr;
+        }
+        private ClassLiteral parseClassLiteral()
+        {
+            ClassLiteral classLiteral = new ClassLiteral();
+            NextToken();
+            if(parseExpression(Priority.Equals) is IdentifierExpression typeName)
+            {
+                classLiteral.TypeName = typeName;
+            } else
+            {
+                return null;
+            }
+            if(peek.Type == Token.TokenType.Colon)
+            {
+
+            }
+            NextToken();
+            if(parseBlockStatement() is BlockStatement block)
+            {
+                classLiteral.Body = block;
+            }
+            return classLiteral;
         }
         private PrefixExpression parsePrefixExpression()
         {

@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "grasslang.Services.CppServi
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "grasslang.Build", "grasslang.Build\grasslang.Build.csproj", "{A2F14E51-525E-4301-A7A4-A4AF566C7084}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "grasslang.Compile", "grasslang.Compile\grasslang.Compile.csproj", "{65625941-8A53-460B-B5AB-41AA332A1275}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -37,5 +39,9 @@ Global
 		{A2F14E51-525E-4301-A7A4-A4AF566C7084}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A2F14E51-525E-4301-A7A4-A4AF566C7084}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2F14E51-525E-4301-A7A4-A4AF566C7084}.Release|Any CPU.Build.0 = Release|Any CPU
+		{65625941-8A53-460B-B5AB-41AA332A1275}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{65625941-8A53-460B-B5AB-41AA332A1275}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{65625941-8A53-460B-B5AB-41AA332A1275}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{65625941-8A53-460B-B5AB-41AA332A1275}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

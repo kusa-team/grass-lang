@@ -229,6 +229,19 @@ namespace grasslang.CodeModel
         public bool Anonymous = false;
     }
 
+
+    /// <summary>
+    /// type (name) [: (extends)] {
+    ///
+    /// }
+    /// </summary>
+    public class ClassLiteral : Expression
+    {
+        public IdentifierExpression TypeName = null;
+        public BlockStatement Body = null;
+        public List<TextExpression> Extends = new List<TextExpression>();
+    }
+
     /// <summary>
     /// xxx = 123
     /// </summary>
@@ -328,4 +341,13 @@ namespace grasslang.CodeModel
     {
         public Expression ctorCall;
     }
+
+    /// <summary>
+    /// import xxx.xxx;
+    /// </summary>
+    public class ImportStatement : Statement
+    {
+        public TextExpression Target;
+    }
+
 }

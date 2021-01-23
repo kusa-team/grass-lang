@@ -1,6 +1,9 @@
 ﻿using System;
+using System.IO;
 using System.Linq;
 using grasslang.Build;
+using grasslang.Compile;
+using grasslang.CodeModel;
 namespace grasslang
 {
     
@@ -14,10 +17,24 @@ namespace grasslang
             arguments.AddValue("tasks", new string[] { "-t", "--tasks" }, "build");
             // common
             arguments.AddSwitch("version", new string[] { "-v", "--version" });
+            arguments.AddSwitch("script", new string[] { "--script" });
+            arguments.AddValue("codegen", new string[] { "-c", "--codegen" });
             arguments.Parse();
             if(arguments["version"] is true)
             {
-                Console.WriteLine("Grasslang debug 0.23.");
+                Console.WriteLine("Grasslang debug 0.24.");
+            }
+            if(arguments["codegen"] is string and { Length: >0 } genfile)
+            {
+                CodeGen codeGen = new CodeGen();
+                Parser parser = new Parser
+                {
+                    Lexer = new Lexer(File.ReadAllText(genfile))
+                };
+                parser.InitParser();
+                var ast = parser.BuildAst();
+                var code = codeGen.Build(ast);
+                Console.WriteLine(code);
             }
             if(arguments["project"] is string and { Length: >0 } project)
             {

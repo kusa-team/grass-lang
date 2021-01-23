@@ -24,5 +24,6 @@
       <ProjectReference Include="..\grasslang.CodeModel\grasslang.CodeModel.csproj" />
       <ProjectReference Include="..\grasslang.Scripting\grasslang.Scripting.csproj" />
       <ProjectReference Include="..\grasslang.Build\grasslang.Build.csproj" />
+      <ProjectReference Include="..\grasslang.Compile\grasslang.Compile.csproj" />
     </ItemGroup>
 </Project>
