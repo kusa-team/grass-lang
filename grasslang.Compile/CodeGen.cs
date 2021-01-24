@@ -10,6 +10,7 @@ namespace grasslang.Compile
     {
         public static string Template = @"
 #include <iostream>
+#include <memory>
 using namespace std;
 #define gx_string string
 #define gx_int int
@@ -62,7 +63,7 @@ using namespace std;
         {
             var result = "";
             // build type
-            result += Build(definitionExpression.ObjType) + " ";
+            result += "shared_ptr<" + Build(definitionExpression.ObjType) + "> ";
             // build name
             result += Build(definitionExpression.Name);
             // build value
@@ -118,7 +119,7 @@ using namespace std;
         }
         private string buildReturnStatement(ReturnStatement returnStatement)
         {
-            return "return " + Build(returnStatement.Value);
+            return "return " + Build(returnStatement.Value) + ";";
         }
         public string Build(Node node)
         {
@@ -151,13 +152,33 @@ using namespace std;
                 return buildLetStatement(letStatement);
             } else if (node is NewExpression newExpression)
             {
-
+                return buildNewExpression(newExpression);
+            } else if (node is InfixExpression infixExpression)
+            {
+                return buildInfixExpression(infixExpression);
             }
             return "";
         }
+        private string buildInfixExpression(InfixExpression infixExpression)
+        {
+            var result = "";
+            result += Build(infixExpression.Left) + " ";
+            result += infixExpression.Operator.Literal + " ";
+            result += Build(infixExpression.Right);
+            return result;
+        }
         private string buildNewExpression(NewExpression newExpression)
         {
-            return "";
+            var typename = "";
+            var ctorcall_params = "";
+            if (newExpression.ctorCall is CallExpression call)
+            {
+                typename = Build(call.Function);
+            } else
+            {
+
+            }
+            return "make_shared<" + typename + ">()";
         }
         private string buildLetStatement(LetStatement letStatement)
         {
