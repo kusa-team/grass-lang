@@ -1,12 +1,13 @@
-﻿using System;
+﻿using grasslang.Build;
+using grasslang.CodeModel;
+using grasslang.Compile;
+using grasslang.OwoVMCompiler;
+using System;
 using System.IO;
 using System.Linq;
-using grasslang.Build;
-using grasslang.Compile;
-using grasslang.CodeModel;
 namespace grasslang
 {
-    
+
     class Program
     {
         static void Main(string[] args)
@@ -19,12 +20,13 @@ namespace grasslang
             arguments.AddSwitch("version", new string[] { "-v", "--version" });
             arguments.AddSwitch("script", new string[] { "--script" });
             arguments.AddValue("codegen", new string[] { "-c", "--codegen" });
+            arguments.AddValue("owovm", new string[] { "--preview-owovm", "-ov" });
             arguments.Parse();
-            if(arguments["version"] is true)
+            if (arguments["version"] is true)
             {
                 Console.WriteLine("Grasslang debug 0.24.");
             }
-            if(arguments["codegen"] is string and { Length: >0 } genfile)
+            if (arguments["codegen"] is string and { Length: > 0 } genfile)
             {
                 CodeGen codeGen = new CodeGen();
                 Parser parser = new Parser
@@ -36,7 +38,19 @@ namespace grasslang
                 var code = codeGen.Build(ast);
                 Console.WriteLine(code);
             }
-            if(arguments["project"] is string and { Length: >0 } project)
+            if (arguments["owovm"] is string and { Length: > 0 } compilefile)
+            {
+                Compiler compiler = new Compiler();
+                Parser parser = new Parser
+                {
+                    Lexer = new Lexer(File.ReadAllText(compilefile))
+                };
+                parser.InitParser();
+                var ast = parser.BuildAst();
+                var result = compiler.compileAst(ast);
+                File.WriteAllBytes(compilefile + ".ob", result);
+            }
+            if (arguments["project"] is string and { Length: > 0 } project)
             {
                 runProject(project, arguments);
                 return;

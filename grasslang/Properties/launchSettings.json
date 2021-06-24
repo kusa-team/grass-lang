@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "grasslang": {
+      "commandName": "Project",
+      "commandLineArgs": "-ov D:\\test.gl"
+    }
+  }
+}
