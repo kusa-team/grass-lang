@@ -7,10 +7,11 @@ namespace grasslang.OwoVMCompiler
     record VariableInfo(string name, string type, uint register);
     public class Compiler
     {
+        List<IndexItem> indexItems = new List<IndexItem>();
         List<VariableInfo> variables = new List<VariableInfo>();
         uint TopRegister = 0; // r0-31为变量寄存器（超出则压入栈中），r32-47计算临时寄存器，r48-61为参数寄存器（超出压栈），r62为参数数量，r63为返回值
         uint TempRegister = 32;
-        public byte[] compileNode(Node node)
+        private byte[] compileNode(Node node)
         {
             List<byte> result = new List<byte>();
             if (node is LetStatement letStatement)
@@ -101,15 +102,60 @@ namespace grasslang.OwoVMCompiler
                 result.AddRange(new byte[] { (byte)lastTempRegister, (byte)(lastTempRegister + 1), 0b01010101 });
                 TempRegister = lastTempRegister; // reset
             }
+            else if (node is FunctionLiteral functionLiteral)
+            {
+                foreach (var subnode in functionLiteral.Body.Body)
+                {
+                    result.AddRange(compileNode(subnode));
+                }
+            }
             return result.ToArray();
         }
-        public byte[] compileAst(Ast ast)
+        /*
+            思路： 第一层仅允许class/struct/function
+            突然想到还没有class呢，先鸽了
+         */
+        private byte[] compileAst(Ast ast)
         {
             List<byte> result = new List<byte>();
             foreach (var node in ast.Root)
             {
-                result.AddRange(compileNode(node));
+                bool compiled = false;
+                if (node is ExpressionStatement expressionStatement)
+                {
+                    if (expressionStatement.Expression is FunctionLiteral functionLiteral)
+                    {
+                        // TODO: 暂时不支持参数，什么时候支持等我什么时候整完call指令
+                        indexItems.Add(new IndexItem(functionLiteral.FunctionName.Literal + "()", 0x04, Convert.ToUInt64(result.Count)));
+                        // 0x04 means function/method
+                        result.AddRange(compileNode(node));
+                        compiled = true;
+                    }
+                }
+                if (!compiled)
+                {
+                    // TODO: throw an exception here
+                }
             }
+            return result.ToArray();
+        }
+        private byte[] compileIndexItems()
+        {
+            List<byte> result = new List<byte>();
+            foreach (var item in indexItems)
+            {
+                result.AddRange(item.CompileToArray());
+            }
+            return result.ToArray();
+        }
+        public byte[] Compile(Ast ast)
+        {
+            List<byte> result = new List<byte>();
+            byte[] codeResult = compileAst(ast);
+            byte[] indexResult = compileIndexItems();
+            result.AddRange(BitConverter.GetBytes(Convert.ToUInt64(indexResult.Length)));
+            result.AddRange(indexResult);
+            result.AddRange(codeResult);
             return result.ToArray();
         }
     }

@@ -47,7 +47,7 @@ namespace grasslang
                 };
                 parser.InitParser();
                 var ast = parser.BuildAst();
-                var result = compiler.compileAst(ast);
+                var result = compiler.Compile(ast);
                 File.WriteAllBytes(compilefile + ".ob", result);
             }
             if (arguments["project"] is string and { Length: > 0 } project)
