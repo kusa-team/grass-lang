@@ -444,7 +444,7 @@ namespace grasslang.CodeModel
             }
             if(peek.Type == Token.TokenType.Colon)
             {
-
+                // TODO: 在这里parse要继承的对象
             }
             NextToken();
             if(parseBlockStatement() is BlockStatement block)

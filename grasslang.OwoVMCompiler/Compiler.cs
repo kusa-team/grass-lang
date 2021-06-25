@@ -111,14 +111,12 @@ namespace grasslang.OwoVMCompiler
             }
             return result.ToArray();
         }
-        /*
-            思路： 第一层仅允许class/struct/function
-            突然想到还没有class呢，先鸽了
-         */
-        private byte[] compileAst(Ast ast)
+        Stack<IndexItem> itemStack = new Stack<IndexItem>();
+        // 仅适用于compile结构代码
+        private byte[] compileNodeArray(Node[] nodeArray)
         {
             List<byte> result = new List<byte>();
-            foreach (var node in ast.Root)
+            foreach (var node in nodeArray)
             {
                 bool compiled = false;
                 if (node is ExpressionStatement expressionStatement)
@@ -126,10 +124,19 @@ namespace grasslang.OwoVMCompiler
                     if (expressionStatement.Expression is FunctionLiteral functionLiteral)
                     {
                         // TODO: 暂时不支持参数，什么时候支持等我什么时候整完call指令
-                        indexItems.Add(new IndexItem(functionLiteral.FunctionName.Literal + "()", 0x04, Convert.ToUInt64(result.Count)));
+                        string prefix = itemStack.Count != 0 ? itemStack.Peek().Name + "." : "";
+                        indexItems.Add(new IndexItem(prefix + functionLiteral.FunctionName.Literal + "()", 0x04, Convert.ToUInt64(result.Count)));
                         // 0x04 means function/method
                         result.AddRange(compileNode(node));
                         compiled = true;
+                    }
+                    else if (expressionStatement.Expression is ClassLiteral classLiteral)
+                    {
+                        var item = new IndexItem(classLiteral.TypeName.Literal, 0x02, 0x00);// 长度0x00空类（等后面加入class的field再写）
+                        itemStack.Push(item);
+                        indexItems.Add(item);
+                        result.AddRange(compileNodeArray(classLiteral.Body.Body.ToArray()));
+                        itemStack.Pop();
                     }
                 }
                 if (!compiled)
@@ -138,6 +145,15 @@ namespace grasslang.OwoVMCompiler
                 }
             }
             return result.ToArray();
+        }
+        /*
+            思路： 结构上仅允许class/struct/function
+            突然想到还没有class呢，先鸽了(划掉) 草 原来已经有class了，鸽了几个月忘记了
+         */
+        private byte[] compileAst(Ast ast)
+        {
+            var result = compileNodeArray(ast.Root.ToArray());
+            return result;
         }
         private byte[] compileIndexItems()
         {
