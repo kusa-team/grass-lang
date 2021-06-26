@@ -2,7 +2,7 @@
   "profiles": {
     "grasslang": {
       "commandName": "Project",
-      "commandLineArgs": "-ov D:\\test.gl"
+      "commandLineArgs": "-ovEv -ov D:\\test.gl"
     }
   }
 }

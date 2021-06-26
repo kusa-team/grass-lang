@@ -437,7 +437,7 @@ namespace grasslang.CodeModel
                 {
                     break;
                 }
-                buffer += ch == '\\' ? NextChar() : ch;
+                buffer += ch;
                 NextChar();
             }
 

@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 namespace grasslang.OwoVMCompiler
 {
     record VariableInfo(string name, string type, uint register);
@@ -11,6 +12,18 @@ namespace grasslang.OwoVMCompiler
         List<VariableInfo> variables = new List<VariableInfo>();
         uint TopRegister = 0; // r0-31为变量寄存器（超出则压入栈中），r32-47计算临时寄存器，r48-61为参数寄存器（超出压栈），r62为参数数量，r63为返回值
         uint TempRegister = 32;
+        public bool enableVMCall = false;
+
+        private static byte[] instMovToRegister(byte reg,UInt64 value)
+        {
+            var result = new byte[] { 0x0D, reg, 0, 0b01010110 }.ToList();
+            result.AddRange(BitConverter.GetBytes(value));
+            return result.ToArray();
+        }
+        private static byte[] instMovToRegister(byte reg, byte value)
+        {
+            return new byte[] { 0x0D, reg, value, 0b01010101 };
+        }
         private byte[] compileNode(Node node)
         {
             List<byte> result = new List<byte>();
@@ -24,6 +37,10 @@ namespace grasslang.OwoVMCompiler
                     result.AddRange(new byte[] { 0x0D, (byte)TopRegister, 0x00, type });
                     var value = BitConverter.GetBytes(long.Parse(numberLiteral.Value));
                     result.AddRange(value);
+                } else if (definition.Value is StringLiteral)
+                {
+                    result.AddRange(compileNode(definition.Value));
+                    result.AddRange(new byte[] { 0x0D, (byte)TopRegister, (byte)TempRegister, 00}); // mov堆上对象不需要type
                 }
                 else
                 {
@@ -108,6 +125,52 @@ namespace grasslang.OwoVMCompiler
                 {
                     result.AddRange(compileNode(subnode));
                 }
+            } else if (node is CallExpression callExpression)
+            {
+                // call指令未完成，先做vmcall吧。
+                if(callExpression.Function.Literal == "owovm$vmcall")
+                {
+                    if(enableVMCall)
+                    {
+                        // 启用vmcall了
+                        if(callExpression.Parameters[0] is NumberLiteral vmcallOpcode)
+                        {
+                            result.AddRange(instMovToRegister(48, UInt64.Parse(vmcallOpcode.Value)));
+                        }else
+                        {
+                            throw new Exception("The opcode of VMCall is must number");
+                        }
+                        for (int i = 1; i < callExpression.Parameters.Count; i++)
+                        {
+                            if(callExpression.Parameters[i] is IdentifierExpression vmcallArg)
+                            {
+                                var varname = vmcallArg.Literal;
+                                var resultVars = (from var in variables where var.name == varname select var);
+                                if(!resultVars.Any()) { throw new Exception("Undefined variable: " + varname); }
+                                var inputVar = resultVars.First();
+                                result.AddRange(instMovToRegister((byte)(48 + i), (byte)inputVar.register));
+                            } else if(callExpression.Parameters[i] is NumberLiteral vmcallArgNum)
+                            {
+                                result.AddRange(instMovToRegister((byte)(48 + i), UInt64.Parse(vmcallArgNum.Value)));
+                            } else if(callExpression.Parameters[i] is StringLiteral)
+                            {
+                                result.AddRange(compileNode(callExpression.Parameters[i]));
+                                result.AddRange(new byte[] { 0x0D, (byte)(48 + i), (byte)TempRegister, 00 });
+                            }
+                        }
+                        result.AddRange(new byte[] { 0x0E, 0, 0, 0 });
+                    } else
+                    {
+                        throw new Exception("VMCall is not allowed");
+                    }
+                }
+            } else if (node is StringLiteral stringLiteral)
+            {
+                string parsedString = stringLiteral.Value;
+                parsedString = parsedString.Replace("\\n", "\n");
+                result.AddRange(new byte[] { 0x12, (byte)TempRegister, 0, 0 });
+                result.AddRange(BitConverter.GetBytes(Convert.ToUInt64(parsedString.Length)));
+                result.AddRange(Encoding.Default.GetBytes(parsedString));
             }
             return result.ToArray();
         }

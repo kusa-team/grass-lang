@@ -21,6 +21,7 @@ namespace grasslang
             arguments.AddSwitch("script", new string[] { "--script" });
             arguments.AddValue("codegen", new string[] { "-c", "--codegen" });
             arguments.AddValue("owovm", new string[] { "--preview-owovm", "-ov" });
+            arguments.AddSwitch("owovm-enable-vmcall", new string[] { "--owovm-enable-vmcall", "-ovEv" });
             arguments.Parse();
             if (arguments["version"] is true)
             {
@@ -40,7 +41,10 @@ namespace grasslang
             }
             if (arguments["owovm"] is string and { Length: > 0 } compilefile)
             {
-                Compiler compiler = new Compiler();
+                Compiler compiler = new Compiler
+                {
+                    enableVMCall = (arguments["owovm-enable-vmcall"] is true)
+                };
                 Parser parser = new Parser
                 {
                     Lexer = new Lexer(File.ReadAllText(compilefile))
