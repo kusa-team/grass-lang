@@ -17,6 +17,8 @@ namespace grasslang.OwoVMCompiler
     {
         public List<byte> Buffer = new List<byte>();
         public int Length => Buffer.Count;
+        public int LengthIncluded = 0;
+        public int LengthExcluded => Length - LengthIncluded;
         public void Emit(byte a)
         {
             Buffer.Add(a);
@@ -65,6 +67,7 @@ namespace grasslang.OwoVMCompiler
         }
         public void Emit(CodeBuffer a)
         {
+            LengthIncluded += a.Length;
             Buffer.AddRange(a.Buffer);
         }
         public byte[] Build()
@@ -110,7 +113,15 @@ namespace grasslang.OwoVMCompiler
                 Emit(op2imm);
             }
         }
-
+        public void EmitCall(string name)
+        {
+            Emit((byte)0x0A); // opcode: call
+            Emit((byte)0x00); // op1
+            Emit((byte)0x00); // op2
+            Emit((byte)0x00); // opext
+            Emit(name);
+            Emit((byte)0x00); // end of string
+        }
         public void EmitVMCall()
         {
             Emit(new byte[] { 0x0E, 0, 0, 0 });
@@ -132,6 +143,15 @@ namespace grasslang.OwoVMCompiler
             Emit(0); // op1
             Emit(0); // op2
             Emit(0); // opext
+        }
+
+        public void EmitBrfalse(Register reg, Immediate target)
+        {
+            Emit((byte)0x10); // opcode: brfalse
+            Emit(reg); // op1
+            Emit((byte)0x00); // op2
+            Emit(0); // opext
+            Emit(target);
         }
     }
 }

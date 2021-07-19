@@ -5,14 +5,123 @@ using System.Linq;
 using System.Text;
 namespace grasslang.OwoVMCompiler
 {
-    record VariableInfo(string name, string type, uint register);
+    class Node
+    {
+        public Node Parent = null;
+        public virtual List<Node> Children { get; set; } = new List<Node>();
+        public string Name;
+        public virtual string FullName
+        {
+            get
+            {
+                string result = "";
+                if (Parent is Node namedParent)
+                {
+                    result += string.IsNullOrEmpty(namedParent.Name) ? "" 
+                        : (namedParent.FullName + ".");
+                }
+                result += Name;
+                return result;
+            }
+        }
+        public virtual Node Find(string identifier)
+        {
+            foreach (var child in Children)
+            {
+                if (child.Name == identifier) return child;
+            }
+            if (Parent != null)
+            {
+                return Parent.Find(identifier);
+            }
+            return null;
+        }
+        public List<IndexItem> ToIndexItem()
+        {
+            List<IndexItem> result = new List<IndexItem>();
+            if(this is ClassScope selfClass)
+            {
+                result.Add(new IndexItem(FullName, 0x02, 0x00));
+            } else if (this is FunctionScope selfFunc)
+            {
+                result.Add(new IndexItem(FullName, 0x04, selfFunc.Address));
+            }
+            foreach (var child in Children)
+            {
+                result.AddRange(child.ToIndexItem());
+            }
+            return result;
+        }
+    }
+    class Scope : Node
+    {
+        public override Node Find(string identifier)
+        {
+            var node = (Node)this;
+            while (true)
+            {
+                if (node is Scope)
+                {
+                    foreach (var child in node.Children)
+                    {
+                        if (child.Name == identifier) return child;
+                    }
+                }
+                else if (node == null)
+                {
+                    return null;
+                }
+                node = node.Parent;
+            }
+        }
+    }
+    class ClassScope : Scope
+    {
+        public ClassScope(string name)
+        {
+            this.Name = name;
+        }
+    }
+    interface RegisterScope
+    {
+        public uint VariableRegister { get; set; }
+        public uint TempRegister { get; set; }
+        public uint ParameterRegister { get; set; }
+    } 
+    class FunctionScope : Scope, RegisterScope
+    {
+        public string ArgumentString
+        {
+            get => "";
+        }
+        public override string FullName => base.FullName + "(" + ArgumentString + ")";
+        public uint VariableRegister { get; set; } = 0;
+        public uint TempRegister { get; set; } = 32;
+        public uint ParameterRegister { get; set; } = 48;
+
+        public UInt64 Address = 0;
+        public FunctionScope(string name)
+        {
+            this.Name = name;
+        }
+    }
+    class VariableNode : Node
+    {
+        public uint Register = 0;
+        public bool InStack = false;
+        public string Type = "";
+        public VariableNode(string name, uint reg)
+        {
+            this.Name = name;
+            this.Register = reg;
+        }
+    }
+    
     public class Compiler
     {
-        List<IndexItem> indexItems = new List<IndexItem>();
-        List<VariableInfo> variables = new List<VariableInfo>();
+        Stack<Node> scopes = new Stack<Node>();
         
         public bool enableVMCall = false;
-        public CodeBuffer codeBuffer = new CodeBuffer();
         private static Dictionary<string, ImmediateType> immTypes = new Dictionary<string, ImmediateType>();
         private static ImmediateType GetImmediateType(string typeString, string valueString = null)
         {
@@ -28,148 +137,215 @@ namespace grasslang.OwoVMCompiler
         }
         private void moveVariable(byte index, string name, ref CodeBuffer buffer)
         {
-            var resultVars = (from var in variables where var.name == name select var);
-            if (!resultVars.Any())
+            var variableRaw = scopes.Peek().Find(name);
+            if(variableRaw == null)
             {
                 throw new Exception("Undefined identifier: " + name);
+            } else if (variableRaw is not VariableNode)
+            {
+                throw new Exception("Compiler Internal Error");
             }
-            var inputVar = resultVars.First();
+            var variable = variableRaw as VariableNode;
             buffer.EmitMov(
                 new Register(index),
-                new Register((byte)inputVar.register, GetImmediateType(inputVar.type))
+                new Register((byte)(variable.Register)
+                    , GetImmediateType(variable.Type))
                 );
         }
-        private CodeBuffer compileNode(Node node, uint startReg = 0, uint startTempReg = 32)
+        public int CodeSize = 0;
+        private CodeBuffer compileNode(CodeModel.Node node)
         {
-            uint TopRegister = startReg; // r0-31为变量寄存器（超出则压入栈中），r32-47计算临时寄存器，r48-61为参数寄存器（超出压栈），r62为参数数量，r63为返回值
-            uint TempRegister = startTempReg;
-            CodeBuffer result = new CodeBuffer();
-
-
-            if (node is LetStatement letStatement)
+            CodeBuffer result = new();
+            if (node is ExpressionStatement exprStmt)
             {
-                var definition = letStatement.Definition;
-                variables.Add(new VariableInfo(definition.Name.Literal, definition.ObjType.Literal, TopRegister));
-                if (definition.Value is NumberLiteral numberLiteral)
+                result.Emit(compileNode(exprStmt.Expression));
+            }
+            else if (node is LetStatement letStmt)
+            {
+                // 在本作用域内声明变量
+                var definition = letStmt.Definition;
+                var curNode = scopes.Peek() as RegisterScope;
+                var reg = curNode.VariableRegister;
+                var variable = new VariableNode(definition.Name.Literal, reg);
+                ((Scope)curNode).Children.Add(variable);
+                curNode.VariableRegister++;
+                // 解析语句 构造字节码
+                if (definition.Value is NumberLiteral numLiteral)
                 {
-                    // rvalue is number
-                    var rvalue = numberLiteral.Value;
+                    // 数字 直接Move
                     var type = definition.ObjType.Literal;
-
+                    var value = numLiteral.Value;
                     result.EmitMov(
-                        new Register((byte)TopRegister), 
-                        new Immediate(GetImmediateType(type, rvalue), numberLiteral.Value)
-                    );
-                } else if (definition.Value is IdentifierExpression identifierExpression)
+                        new Register((byte)reg),
+                        new Immediate(
+                            GetImmediateType(type, value),
+                            value
+                        ));
+                }
+                else if (node is IdentifierExpression identExpr)
                 {
-                    moveVariable((byte)TopRegister, identifierExpression.Literal, ref result);
-                } else if (definition.Value is StringLiteral stringLiteral)
-                {
-                    result.Emit(compileNode(stringLiteral, TopRegister, TempRegister));
-                    result.EmitMov(new Register((byte)TopRegister), new Register((byte)TempRegister, ImmediateType.Unknown));
+                    moveVariable((byte)reg, identExpr.Literal, ref result);
                 }
                 else
                 {
-                    if (definition.Value != null)
-                        throw new NotImplementedException("Unsupport node!");
+                    // 先Move到临时寄存器，再Move回来
+                    result.Emit(compileNode(definition.Value));
+                    result.EmitMov(
+                        new Register((byte)reg, ImmediateType.Unknown),
+                        new Register((byte)curNode.TempRegister, ImmediateType.Unknown)
+                        );
                 }
-                TopRegister++;
             }
-            else if (node is ExpressionStatement expressionStatement)
+            else if (node is IdentifierExpression identExpr)
             {
-                return compileNode(expressionStatement.Expression);
-            } else if (node is CallExpression callExpression)
+                var curNode = scopes.Peek() as RegisterScope;
+                moveVariable((byte)curNode.TempRegister, identExpr.Literal, ref result);
+            }
+            else if (node is StringLiteral strLiteral)
             {
-                bool isVMCall = false;
-                if(callExpression.Function.Literal == "owovm$vmcall")
+                var curNode = scopes.Peek() as RegisterScope;
+                var parsedStr = strLiteral.Value;
+                parsedStr = parsedStr.Replace("\\n", "\n");
+                result.EmitString(
+                    new Register((byte)curNode.TempRegister),
+                    parsedStr
+                    );
+            }
+            else if (node is BlockStatement blockStmt)
+            {
+                foreach (var subNode in blockStmt.Body)
+                {
+                    result.Emit(compileNode(subNode));
+                }
+            }
+            else if (node is IfExpression ifExpr)
+            {
+                var curNode = scopes.Peek() as RegisterScope;
+                if (ifExpr.Condition is NumberLiteral numLiteral)
+                {
+                    if (ulong.Parse(numLiteral.Value) == 0)
+                    {
+                        // it is always 0
+                        if (ifExpr.Alternative != null)
+                        {
+                            result.Emit(compileNode(ifExpr.Alternative));
+                        }
+                    }
+                    else
+                    {
+                        // always is true
+                        result.Emit(compileNode(ifExpr.Consequence));
+                    }
+                }
+                else
+                {
+                    result.Emit(compileNode(ifExpr.Condition));
+                    var conditionIsTrue = compileNode(ifExpr.Consequence);
+                    result.EmitBrfalse(new Register((byte)curNode.TempRegister),
+                        new Immediate(ImmediateType.Uint64, (CodeSize + 12).ToString())); // 12 = size of opcode + size of immediate
+                    result.Emit(conditionIsTrue);
+                    if (ifExpr.Alternative != null)
+                    {
+                        result.Emit(compileNode(ifExpr.Alternative));
+                    }
+                }
+            }
+            else if (node is CallExpression callExpr)
+            {
+                string name = callExpr.Function.Literal;
+                bool vmcall = false;
+                if(name == "owovm$vmcall")
                 {
                     if(enableVMCall)
                     {
-                        isVMCall = true;
+                        vmcall = true;
                     } else
                     {
                         throw new Exception("VMCall is not allowed");
                     }
                 }
-                for (int i = 0; i < callExpression.Parameters.Count; i++)
+                var curNode = scopes.Peek() as RegisterScope;
+                // load argument and push registers here
+                byte regIndex = 48;
+                foreach(var parameter in callExpr.Parameters)
                 {
-                    if (callExpression.Parameters[i] is IdentifierExpression vmcallArg)
+                    if(parameter is NumberLiteral numLiteral)
                     {
-                        moveVariable((byte)(48 + i), vmcallArg.Literal, ref result);
-                    }
-                    else if (callExpression.Parameters[i] is NumberLiteral vmcallArgNum)
-                    {
-                        var value = vmcallArgNum.Value;
+                        var value = numLiteral.Value;
                         result.EmitMov(
-                            new Register((byte)(48 + i)),
-                            new Immediate(GetImmediateType("", value), value)
+                            new Register(regIndex), 
+                            new Immediate(GetImmediateType(value), value)
+                        );    
+                    } else
+                    {
+                        result.Emit(compileNode(parameter));
+                        result.EmitMov(
+                            new Register((byte)regIndex, ImmediateType.Unknown),
+                            new Register((byte)curNode.TempRegister, ImmediateType.Unknown)
                             );
                     }
-                    else if (callExpression.Parameters[i] is StringLiteral)
-                    {
-                        result.Emit(compileNode(callExpression.Parameters[i], TopRegister, TempRegister));
-                        result.EmitMov(
-                            new Register((byte)(48 + i)),
-                            new Register((byte)(TempRegister)));
-                    }
+                    regIndex++;
                 }
-                if(isVMCall)
+                if(vmcall)
                 {
                     result.EmitVMCall();
-                }
-            } else if (node is StringLiteral stringLiteral)
-            {
-                string parsedString = stringLiteral.Value;
-                parsedString = parsedString.Replace("\\n", "\n");
-                result.EmitString(
-                    new Register((byte)TempRegister),
-                    parsedString
-                    );
-            } else if (node is FunctionLiteral functionLiteral)
-            {
-                var func = compileNode(functionLiteral.Body);
-                func.EmitRet();
-                result.Emit(func);
-            } else if (node is BlockStatement blockStatement)
-            {
-                foreach(var subnode in blockStatement.Body)
+                } else
                 {
-                    result.Emit(compileNode(subnode));
+                    if(callExpr.Function is IdentifierExpression identNameExpr)
+                    {
+                        var target = (curNode as Node).Find(name);
+                        if(target != null)
+                        {
+                            result.EmitCall(target.FullName);
+                        } else
+                        {
+                            throw new Exception("Undefined identifier: " + name);
+                        }
+                    } else
+                    {
+
+                    }
                 }
             }
+            CodeSize += result.LengthExcluded;
             return result;
         }
         Stack<IndexItem> itemStack = new Stack<IndexItem>();
         // 仅适用于compile结构代码
-        private CodeBuffer compileNodeArray(Node[] nodeArray)
+        private CodeBuffer compileNodeArray(CodeModel.Node[] nodeArray)
         {
             CodeBuffer result = new CodeBuffer();
-            foreach (var node in nodeArray)
+            foreach(var subNode in nodeArray)
             {
-                bool compiled = false;
-                if (node is ExpressionStatement expressionStatement)
+                if(subNode is ClassLiteral classLiteral)
                 {
-                    if (expressionStatement.Expression is FunctionLiteral functionLiteral)
+                    // class
+                    var subScope = new ClassScope(classLiteral.TypeName.Literal)
                     {
-                        // TODO: 暂时不支持参数，什么时候支持等我什么时候整完call指令
-                        string prefix = itemStack.Count != 0 ? itemStack.Peek().Name + "." : "";
-                        indexItems.Add(new IndexItem(prefix + functionLiteral.FunctionName.Literal + "()", 0x04, Convert.ToUInt64(result.Length)));
-                        // 0x04 means function/method
-                        result.Emit(compileNode(node));
-                        compiled = true;
-                    }
-                    else if (expressionStatement.Expression is ClassLiteral classLiteral)
-                    {
-                        var item = new IndexItem(classLiteral.TypeName.Literal, 0x02, 0x00);// 长度0x00空类（等后面加入class的field再写）
-                        itemStack.Push(item);
-                        indexItems.Add(item);
-                        result.Emit(compileNodeArray(classLiteral.Body.Body.ToArray()));
-                        itemStack.Pop();
-                    }
-                }
-                if (!compiled)
+                        Parent = scopes.Peek()
+                    };
+                    scopes.Peek().Children.Add(subScope);
+                    scopes.Push(subScope);
+                    result.Emit(compileNodeArray(classLiteral.Body.Body.ToArray()));
+                    scopes.Pop();
+                } else if (subNode is FunctionLiteral functionLiteral)
                 {
-                    // TODO: throw an exception here
+                    // function
+                    var subScope = new FunctionScope(functionLiteral.FunctionName.Literal)
+                    {
+                        Parent = scopes.Peek(),
+                        Address = Convert.ToUInt64(CodeSize)
+                    };
+                    scopes.Peek().Children.Add(subScope);
+                    scopes.Push(subScope);
+                    var body = compileNode(functionLiteral.Body);
+                    body.EmitRet();
+                    result.Emit(body);
+                    scopes.Pop();
+                    CodeSize += 4; // ret
+                } else if(subNode is ExpressionStatement exprStmt)
+                {
+                    result.Emit(compileNodeArray(new[] { exprStmt.Expression }));
                 }
             }
             return result;
@@ -182,10 +358,11 @@ namespace grasslang.OwoVMCompiler
         {
             return compileNodeArray(ast.Root.ToArray());
         }
-        private byte[] compileIndexItems()
+        private byte[] compileIndexItems(Node root)
         {
-            List<byte> result = new List<byte>();
-            foreach (var item in indexItems)
+            var items = root.ToIndexItem();
+            var result = new List<byte>();
+            foreach (var item in items)
             {
                 result.AddRange(item.CompileToArray());
             }
@@ -193,12 +370,22 @@ namespace grasslang.OwoVMCompiler
         }
         public byte[] Compile(Ast ast)
         {
+            var rootScope = new Scope();
+            scopes.Push(rootScope);
             List<byte> result = new List<byte>();
+
+            // compile code
             byte[] codeResult = compileAst(ast).Build();
-            byte[] indexResult = compileIndexItems();
+            
+            // compile index
+            byte[] indexResult = compileIndexItems(rootScope);
+
+            // concat
             result.AddRange(BitConverter.GetBytes(Convert.ToUInt64(indexResult.Length)));
             result.AddRange(indexResult);
             result.AddRange(codeResult);
+
+            // return
             return result.ToArray();
         }
     }
